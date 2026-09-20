@@ -109,7 +109,6 @@
                         </button>
                     </div>
 
-                    <!-- 화면 비율 맞춤 토글 버튼 -->
                     <div class="flex items-center gap-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50 text-xs">
                         <button onclick="setBusScale(1)" title="원래 크기" class="px-2.5 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">100%</button>
                         <button onclick="setBusScale(0.85)" title="축소 보기" class="px-2.5 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">85%</button>
@@ -215,7 +214,7 @@
                             <div class="flex items-center gap-3 text-xs bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>선택가능</span>
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>선택중</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기</span>
+                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기(남은시간)</span>
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-400 rounded"></span>예약완료</span>
                             </div>
                         </div>
@@ -356,8 +355,8 @@
 
                         <div class="flex items-center justify-center gap-4 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4">
                             <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>빈좌석 (클릭시 전화예약)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (클릭시 입금확정/취소)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정 (클릭시 예약관리/취소)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (남은시간 표시)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정 (성함 표시)</span>
                         </div>
 
                         <div class="overflow-x-auto overflow-y-hidden pb-2">
@@ -541,10 +540,6 @@
                     <div class="flex justify-between"><span class="text-slate-500">연락처:</span><span id="action-passenger-phone" class="font-bold text-slate-800"></span></div>
                     <div class="flex justify-between"><span class="text-slate-500">전체 선택 좌석:</span><span id="action-all-seats" class="font-bold text-slate-800"></span></div>
                     <div class="flex justify-between"><span class="text-slate-500">현재 상태:</span><span id="action-seat-status" class="font-extrabold"></span></div>
-                    <div id="action-remaining-row" class="flex justify-between border-t border-slate-200/60 pt-2 hidden">
-                        <span class="text-slate-500 font-medium">확정 남은 시간:</span>
-                        <span id="action-remaining-time" class="font-mono font-black text-amber-600"></span>
-                    </div>
                 </div>
                 <div class="space-y-2 pt-1">
                     <div id="action-confirm-btn-wrap">
@@ -632,7 +627,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
-        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V4_DATA';
+        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V5_DATA';
         const PASSWORD_KEY = 'TOUR_BUS_ADMIN_PASSWORD';
 
         const DEMO_DATA = {
@@ -668,7 +663,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
                     boardingPointId: "bp-102",
                     seats: [3],
                     status: "pending",
-                    expiresAt: new Date(Date.now() + 4 * 3600 * 1000).toISOString()
+                    expiresAt: new Date(Date.now() + 4 * 3600 * 1000 + 51 * 1000).toISOString()
                 }
             ]
         };
@@ -778,7 +773,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             const mins = Math.floor((totalSecs % 3600) / 60);
             const secs = totalSecs % 60;
             const pad = (n) => String(n).padStart(2, '0');
-            return hrs > 0 ? `${pad(hrs)}:${pad(mins)}` : `${pad(mins)}:${pad(secs)}`;
+            return hrs > 0 ? `${pad(hrs)}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
         }
 
         function updateLiveTimers() {
@@ -949,6 +944,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             let cls = "bg-slate-100 hover:bg-indigo-100 text-slate-700 border border-slate-300";
             let disabled = false;
             let label = String(seatNum);
+            let subLabel = "";
 
             if (selected) {
                 cls = "bg-indigo-600 text-white font-extrabold ring-2 ring-indigo-400 shadow";
@@ -956,13 +952,14 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
                 disabled = true;
                 if (statusObj.status === 'pending') {
                     cls = "bg-amber-400 text-amber-950 font-bold border border-amber-500 opacity-95";
-                    label = `입금대기`;
+                    label = getRemainingTimeString(statusObj.expiresAt);
+                    subLabel = `<span class="text-[7px] leading-none opacity-80">입금대기</span>`;
                 } else {
                     cls = "bg-slate-400 text-white font-bold";
                     label = `${statusObj.passengerName}`;
                 }
             }
-            return `<button onclick="toggleSeat(${seatNum})" ${disabled ? 'disabled' : ''} class="seat-btn h-10 rounded-lg text-xs flex flex-col items-center justify-center ${cls}"><span class="leading-none font-bold">${seatNum}</span><span class="text-[9px] truncate max-w-[45px] mt-0.5">${label}</span></button>`;
+            return `<button onclick="toggleSeat(${seatNum})" ${disabled ? 'disabled' : ''} class="seat-btn h-10 rounded-lg text-xs flex flex-col items-center justify-center ${cls}"><span class="leading-none font-bold text-[11px]">${seatNum}</span><span class="text-[9px] truncate max-w-[45px] mt-0.5 font-mono">${label}</span>${subLabel}</button>`;
         }
 
         function toggleSeat(seatNum) {
@@ -1118,17 +1115,19 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
         function renderAdminSeatBtn(seatNum, statusObj, tourId) {
             let cls = "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300";
             let label = "빈좌석";
+            let subLabel = "";
 
             if (statusObj) {
                 if (statusObj.status === 'pending') {
                     cls = "bg-amber-400 text-amber-950 font-bold border-amber-500";
-                    label = "입금대기";
+                    label = getRemainingTimeString(statusObj.expiresAt);
+                    subLabel = `<span class="text-[7px] leading-none opacity-80">입금대기</span>`;
                 } else {
                     cls = "bg-indigo-600 text-white font-bold border-indigo-700";
                     label = statusObj.passengerName;
                 }
             }
-            return `<button onclick="handleAdminSeat(${seatNum}, '${tourId}')" class="seat-btn h-12 rounded-lg text-xs flex flex-col items-center justify-center border shadow-sm ${cls}"><span class="font-black leading-none">${seatNum}</span><span class="text-[9px] truncate max-w-[55px] mt-0.5">${label}</span></button>`;
+            return `<button onclick="handleAdminSeat(${seatNum}, '${tourId}')" class="seat-btn h-12 rounded-lg text-xs flex flex-col items-center justify-center border shadow-sm ${cls}"><span class="font-black leading-none text-[11px]">${seatNum}</span><span class="text-[9px] truncate max-w-[55px] mt-0.5 font-mono">${label}</span>${subLabel}</button>`;
         }
 
         function handleAdminSeat(seatNum, tourId) {
@@ -1284,7 +1283,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             const map = {};
             appState.bookings.filter(b => b.tourId === tourId).forEach(bk => {
                 bk.seats.forEach(s => {
-                    map[s] = { bookingId: bk.id, passengerName: bk.passengerName, phone: bk.phone, status: bk.status, allSeats: bk.seats };
+                    map[s] = { bookingId: bk.id, passengerName: bk.passengerName, phone: bk.phone, status: bk.status, allSeats: bk.seats, expiresAt: bk.expiresAt };
                 });
             });
             return map;
