@@ -627,9 +627,9 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
                     date: "2026-10-15",
                     price: 45000,
                     boardingPoints: [
-                        { id: "bp-101", code: "🅰️", name: "시청역 3번출구 (06:30)" },
-                        { id: "bp-102", code: "🅱️", name: "잠실역 4번출구 (07:00)" },
-                        { id: "bp-103", code: "🅲", name: "죽전간이정류장 (07:30)" }
+                        { id: "bp-101", code: "🅰️", name: "아산우체국<아산시청 맞은편> (06:30)" },
+                        { id: "bp-102", code: "🅱️", name: "온양온천역 광장 (07:10)" },
+                        { id: "bp-103", code: "🅲", name: "아산마트 버스정류장 (07:35)" }
                     ]
                 }
             ],
@@ -1015,9 +1015,10 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             renderAdminManifestTable();
             if (!document.getElementById('admin-boarding-inputs').children.length) {
                 adminBoardingCount = 0;
-                addBoardingInput("시청역 3번출구 (06:30)");
-                addBoardingInput("잠실역 4번출구 (07:00)");
-            }
+                addBoardingInput("아산우체국<아산시청 맞은편> (06:30)");
+                addBoardingInput("온양온천역 광장 (07:10)");
+                addBoardingInput("아산마트 버스정류장 (07:35)"); 
+                addBoardingInput("배방읍사무소 버스정류장 (07:50)"); 
         }
 
         function addBoardingInput(defaultVal = "") {
