@@ -3,1819 +3,548 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관광버스 45인승 예약 및 관리 시스템</title>
-    <!-- Tailwind CSS -->
+    <title>투어버스 실시간 좌석 예약 및 관리 시스템</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome 아이콘 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Noto Sans KR -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            800: '#3730a3',
-                            900: '#312e81',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Noto Sans KR', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    
+    <!-- SheetJS (엑셀 다운로드 라이브러리) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f8fafc;
-        }
-        
-        .bus-container {
-            background: #ffffff;
-            border: 3px solid #cbd5e1;
-            border-radius: 36px 36px 20px 20px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-            position: relative;
-        }
-
-        .bus-windshield {
-            border-top-left-radius: 30px;
-            border-top-right-radius: 30px;
-            background: linear-gradient(180deg, #38bdf8 0%, #e0f2fe 100%);
-            border-bottom: 3px solid #cbd5e1;
-        }
-
-        .seat-btn {
-            transition: all 0.15s ease-in-out;
-            user-select: none;
-        }
-        
-        .seat-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        body.pseudo-fullscreen {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: 99999 !important;
-            overflow-y: auto !important;
-            background-color: #f8fafc !important;
-        }
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; }
     </style>
 </head>
-<body class="text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
-        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('user')">
-                    <div class="bg-indigo-600 p-2.5 rounded-xl shadow-inner">
-                        <i class="fa-solid font-black fa-bus-simple text-xl text-amber-400"></i>
-                    </div>
-                    <div>
-                        <span class="text-xl font-bold tracking-tight">이순신여행사투어버스</span>
-                        <span class="hidden sm:inline-block text-xs bg-indigo-800 text-indigo-200 px-2 py-0.5 rounded-full ml-2">45인승 전용</span>
-                    </div>
+    <!-- 상단 네비게이션 헤더 -->
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-45">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-700 flex items-center justify-center text-xl shadow-inner">
+                    <i class="fa-solid fa-bus text-indigo-200"></i>
                 </div>
-
-                <div class="flex items-center space-x-2">
-                <div class="flex items-center space-x-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50">
-                    <button id="nav-btn-user" onclick="switchTab('user')" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow">
-                        <i class="fa-solid fa-user"></i>
-                        <span>승객 예약</span>
-                    </button>
-                    <button id="nav-btn-admin" onclick="switchTab('admin')" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white">
-                        <i class="fa-solid fa-user-gear"></i>
-                        <span>운영자 관리</span>
-                    </button>
-                </div>
-
-                <!-- 화면 비율 맞춤 토글 버튼 -->
-                <div class="flex items-center gap-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50 text-xs">
-                    <button onclick="setBusScale(1)" title="원래 크기" class="px-2.5 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">100%</button>
-                    <button onclick="setBusScale(0.85)" title="축소 보기" class="px-2.5 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">85%</button>
-                    <button onclick="setBusScale(0.7)" title="한눈에 전체보기" class="px-2.5 py-1 bg-amber-500 text-slate-950 font-extrabold rounded-lg shadow">전체보기 (70%)</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</header>
-
-    <main class="flex-grow max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
-        <!-- USER MODE SECTION -->
-        <div id="section-user" class="space-y-6">
-            <div class="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold mb-1">편안하고 안전한 관광버스 좌석 예약</h1>
-                    <p class="text-indigo-100 text-sm">원하시는 여행 상품을 선택하고 손쉽게 원하는 좌석을 지정해보세요.</p>
-                </div>
-                <div class="flex items-center gap-3 text-xs bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20">
-                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-clock text-amber-300"></i> 입금대기: 5시간 잠금</span>
-                    <span class="text-indigo-300">|</span>
-                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-emerald-300"></i> 계좌이체</span>
+                    <h1 class="font-bold text-base leading-tight">투어버스 실시간 예약시스템</h1>
+                    <p class="text-[11px] text-indigo-300">45인승 버스 좌석 지정 및 관리</p>
                 </div>
             </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Left Side Controls -->
-                <div class="lg:col-span-4 space-y-6">
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">1</span>
-                                여행 상품 선택
-                            </h2>
-                            <span id="tour-count-badge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">0개 운영중</span>
-                        </div>
-                        <div id="user-tour-list" class="space-y-2.5 max-h-[320px] overflow-y-auto pr-1"></div>
-                    </div>
-
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <h2 class="font-bold text-slate-900 text-base flex items-center gap-2 mb-4">
-                            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">2</span>
-                            탑승 장소 선택 (🅰️~🅶)
-                        </h2>
-                        <div id="user-boarding-list" class="space-y-2">
-                            <div class="p-6 text-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                먼저 여행 상품을 선택해주세요.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
-                        <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">3</span>
-                            예약자 정보 입력
-                        </h2>
-                        
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">예약자 성함 <span class="text-rose-500">*</span></label>
-                            <input type="text" id="passenger-name" placeholder="홍길동" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">연락처 <span class="text-rose-500">*</span></label>
-                            <input type="tel" id="passenger-phone" placeholder="010-1234-5678" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-                        </div>
-
-                        <div class="bg-indigo-50/80 rounded-xl p-4 border border-indigo-100 space-y-2 text-xs">
-                            <div class="flex justify-between text-slate-600">
-                                <span>선택 좌석:</span>
-                                <span id="summary-seats" class="font-bold text-indigo-700">없음</span>
-                            </div>
-                            <div class="flex justify-between text-slate-600">
-                                <span>선택 탑승지:</span>
-                                <span id="summary-boarding" class="font-bold text-slate-800">미선택</span>
-                            </div>
-                            <div class="flex justify-between text-slate-600 border-t border-indigo-200/60 pt-2 text-sm">
-                                <span class="font-semibold text-slate-700">총 결제예정 금액:</span>
-                                <span id="summary-total-price" class="font-extrabold text-indigo-900">0원</span>
-                            </div>
-                        </div>
-
-                        <button onclick="submitBooking()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition text-sm flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-check"></i>
-                            <span>계좌이체 예약 신청하기</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Right Side Passenger Bus Chart -->
-                <div class="lg:col-span-8">
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
-                            <div>
-                                <h2 class="font-bold text-slate-900 text-lg flex items-center gap-2">
-                                    <i class="fa-solid fa-bus text-indigo-600"></i>
-                                    <span>45인승 버스 실시간 좌석 선택</span>
-                                </h2>
-                                <p id="selected-tour-display" class="text-xs text-slate-500 mt-0.5">여행 상품을 먼저 선택해 주세요.</p>
-                            </div>
-
-                            <div class="flex items-center gap-3 text-xs bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>선택가능</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>선택중</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-400 rounded"></span>예약완료</span>
-                            </div>
-                        </div>
-
-                        <!-- 버스 도면 스케일 축소/확대 wrapper -->
-                        <div class="overflow-x-auto overflow-y-hidden pb-2">
-                            <div id="user-bus-wrapper" class="origin-top transition-transform duration-200 min-w-[360px] max-w-[560px] mx-auto bus-container p-5">
-                                <div class="bus-windshield h-14 mb-4 flex items-center justify-between px-6">
-                                    <div class="flex items-center gap-2 text-sky-800 text-xs font-semibold">
-                                        <i class="fa-solid fa-door-open text-base"></i>
-                                        <span>승강구 (출입문)</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow">
-                                        <i class="fa-solid fa-dharmachakra text-amber-400 text-base"></i>
-                                        <span>운전석</span>
-                                    </div>
-                                </div>
-
-                                <div class="text-center text-[11px] text-slate-400 tracking-widest font-bold mb-3 uppercase">
-                                    ▲ Front (전방) ▲
-                                </div>
-
-                                <div id="bus-seat-grid" class="space-y-2.5"></div>
-
-                                <div class="text-center text-[11px] text-slate-400 tracking-widest font-bold mt-4 uppercase">
-                                    ▼ Rear (후방 5인석) ▼
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- 탭 전환 버튼 -->
+            <div class="flex items-center space-x-2 bg-indigo-950/60 p-1 rounded-xl border border-indigo-800">
+                <button id="nav-btn-user" onclick="switchTab('user')" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow">
+                    <i class="fa-solid fa-user-check text-xs"></i> <span>예약하기</span>
+                </button>
+                <button id="nav-btn-admin" onclick="switchTab('admin')" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white">
+                    <i class="fa-solid fa-lock text-xs"></i> <span>관리자 모드</span>
+                </button>
             </div>
         </div>
+    </header>
 
-        <!-- ADMIN MODE SECTION -->
-        <div id="section-admin" class="space-y-6 hidden">
-            <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-md flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="bg-indigo-600 p-3 rounded-xl">
-                        <i class="fa-solid fa-sliders text-2xl text-white"></i>
+    <!-- 메인 컨테이너 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+
+        <!-- [SECTION 1] 사용자 예약 화면 -->
+        <section id="section-user" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 좌측: 여행 상품 및 탑승지 선택 -->
+            <div class="lg:col-span-4 space-y-5">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-indigo-600"></i> 여행 상품 선택
+                        </h2>
+                        <span id="tour-count-badge" class="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full"></span>
                     </div>
-                    <div>
-                        <h1 class="text-2xl font-bold">운영자 관리 대시보드</h1>
-                        <p class="text-slate-400 text-sm">신규 노선 등록, 버스 좌석 실시간 현황 및 수동 전화 예약을 관리합니다.</p>
+                    <div id="user-tour-list" class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                        <!-- JS 렌더링 -->
                     </div>
                 </div>
 
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-location-pin text-indigo-600"></i> 탑승 장소 선택
+                    </h2>
+                    <div id="user-boarding-list" class="grid grid-cols-1 gap-2">
+                        <!-- JS 렌더링 -->
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-indigo-600"></i> 예약자 정보 입력
+                    </h2>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">예약자 성함</label>
+                            <input type="text" id="passenger-name" placeholder="홍길동" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">휴대폰 번호 (- 제외)</label>
+                            <input type="tel" id="passenger-phone" placeholder="01012345678" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 우측: 45인승 버스 좌석 선택기 -->
+            <div class="lg:col-span-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-4">
+                        <div>
+                            <span class="text-xs text-indigo-600 font-bold uppercase tracking-wider">Seat Selection</span>
+                            <h3 id="selected-tour-display" class="text-base font-bold text-slate-900">여행 상품을 선택하세요</h3>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-slate-100 border border-slate-300 inline-block"></span> 선택가능</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span> 내선택</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span> 입금대기</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-slate-400 inline-block"></span> 예약완료</span>
+                        </div>
+                    </div>
+
+                    <!-- 버스 내부 레이아웃 프레임 -->
+                    <div class="bg-slate-900 p-6 rounded-2xl text-white shadow-inner flex flex-col items-center">
+                        <div class="w-full max-w-sm bg-slate-800 border border-slate-700 rounded-t-3xl p-4 mb-3 flex justify-between items-center text-xs text-slate-400">
+                            <span class="bg-slate-700 px-2.5 py-1 rounded-lg text-slate-200 font-bold">🚪 출입문</span>
+                            <div class="text-center font-bold tracking-widest text-slate-300">🚌 45인승 우등/일반 버스 앞쪽</div>
+                            <span class="bg-slate-700 px-2.5 py-1 rounded-lg text-slate-200 font-bold">🧑‍✈️ 기사석</span>
+                        </div>
+
+                        <!-- 좌석 배치 그리드 컨테이너 -->
+                        <div id="user-bus-wrapper" class="w-full max-w-md transition-transform duration-200 origin-top">
+                            <div id="bus-seat-grid" class="space-y-2 bg-slate-800/80 p-4 rounded-xl border border-slate-700/60">
+                                <!-- JS로 1~45번 동적 생성 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 하단 예약 확정 바 -->
+                <div class="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50 p-4 rounded-xl">
+                    <div class="text-xs space-y-1 w-full sm:w-auto">
+                        <p class="text-slate-500">선택 좌석: <strong id="summary-seats" class="text-indigo-600 font-bold">없음</strong></p>
+                        <p class="text-slate-500">탑승 장소: <strong id="summary-boarding" class="text-slate-800 font-bold">미선택</strong></p>
+                        <p class="text-slate-500">총 결제금액: <strong id="summary-total-price" class="text-rose-600 font-bold text-sm">0원</strong></p>
+                    </div>
+                    <button onclick="submitBooking()" class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i> 예약 신청하기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- [SECTION 2] 관리자 모드 화면 -->
+        <section id="section-admin" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <span class="text-xs text-indigo-600 font-bold uppercase tracking-wider">Admin Control Panel</span>
+                    <h2 class="text-lg font-bold text-slate-900">예약 명단 및 좌석 총괄 관리</h2>
+                </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="resetToDemoData()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>데모 데이터 초기화</span>
+                    <select id="admin-tour-select" onchange="selectTour(this.value)" class="px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white font-semibold focus:outline-none">
+                        <!-- JS 렌더링 -->
+                    </select>
+                    <button onclick="exportToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel"></i> 엑셀 다운로드
                     </button>
-                    <button onclick="openModal('modal-supabase-info')" class="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-emerald-100 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-database"></i>
-                        <span>Supabase DB 설계</span>
-                    </button>
-                    <button onclick="exportDataJSON()" class="px-3.5 py-2 bg-indigo-800 hover:bg-indigo-700 text-indigo-100 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-download"></i>
-                        <span>백업 JSON</span>
+                    <button onclick="adminLogout()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-xl transition">
+                        로그아웃
                     </button>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Admin Left Form & Active List -->
-                <div class="lg:col-span-5 space-y-6">
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                                <i class="fa-solid fa-plus-circle text-indigo-600"></i>
-                                <span>신규 여행 노선 등록 (최대 10개)</span>
-                            </h2>
+                <!-- 좌측: 관리자용 버스 시각화 상태 -->
+                <div class="lg:col-span-5 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-chair text-indigo-600"></i> 실시간 버스 좌석 현황판
+                    </h3>
+                    <div class="bg-slate-900 p-4 rounded-xl text-white flex flex-col items-center">
+                        <div id="admin-bus-wrapper" class="w-full transition-transform duration-200 origin-top">
+                            <div id="admin-bus-seat-grid" class="space-y-1.5 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                <!-- JS 렌더링 -->
+                            </div>
                         </div>
-
-                        <form id="create-tour-form" onsubmit="handleCreateTour(event)" class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">여행 목적지 / 상품명 <span class="text-rose-500">*</span></label>
-                                <input type="text" id="admin-tour-title" placeholder="예: 설악산 단풍 여행" required class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">여행 날짜 <span class="text-rose-500">*</span></label>
-                                    <input type="date" id="admin-tour-date" required class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">좌석당 금액(원) <span class="text-rose-500">*</span></label>
-                                    <input type="number" id="admin-tour-price" min="0" step="1000" value="45000" required class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                                </div>
-                            </div>
-
-                            <div class="border-t border-slate-100 pt-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <label class="text-xs font-bold text-slate-700 flex items-center gap-1">
-                                        <span>탑승장소 설정 (최대 7개)</span>
-                                    </label>
-                                    <button type="button" onclick="addBoardingInput()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1">
-                                        <i class="fa-solid fa-plus"></i> 탑승지 추가
-                                    </button>
-                                </div>
-
-                                <div id="admin-boarding-inputs" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
-                            </div>
-
-                            <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-md shadow-indigo-100 transition text-sm flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-bus"></i>
-                                <span>새 노선 등록하기</span>
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <h2 class="font-bold text-slate-900 text-base mb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-indigo-600"></i>
-                            <span>운영중인 여행 노선 목록</span>
-                        </h2>
-                        <div id="admin-tour-list" class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1"></div>
                     </div>
                 </div>
 
-                <!-- Admin Right Seat Grid & Passenger Manifest -->
-                <div class="lg:col-span-7 space-y-6">
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                            <div>
-                                <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                                    <i class="fa-solid fa-bus text-indigo-600"></i>
-                                    <span>운영자 버스 좌석 현황판</span>
-                                </h2>
-                                <p class="text-xs text-slate-500">좌석을 클릭하면 전화예약, 입금확정, 부분취소를 할 수 있습니다.</p>
-                            </div>
-
-                            <select id="admin-tour-select" onchange="onAdminTourSelectChange()" class="px-3.5 py-2 text-sm border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50"></select>
-                        </div>
-
-                        <div id="admin-tour-stats" class="grid grid-cols-3 gap-3 mb-5 text-center"></div>
-
-                        <div class="flex items-center justify-center gap-4 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4">
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>빈좌석 (클릭시 전화예약)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (클릭시 입금확정/취소)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정 (클릭시 예약관리/취소)</span>
-                        </div>
-
-                        <!-- Graphical Admin Bus Floor Plan -->
-                        <div class="overflow-x-auto overflow-y-hidden pb-2">
-                            <div id="admin-bus-wrapper" class="origin-top transition-transform duration-200 min-w-[360px] max-w-[560px] mx-auto bus-container p-5">
-                                <div class="bus-windshield h-14 mb-4 flex items-center justify-between px-6">
-                                    <div class="flex items-center gap-2 text-sky-800 text-xs font-semibold">
-                                        <i class="fa-solid fa-door-open text-base"></i>
-                                        <span>승강구 (출입문)</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow">
-                                        <i class="fa-solid fa-dharmachakra text-amber-400 text-base"></i>
-                                        <span>운전석</span>
-                                    </div>
-                                </div>
-
-                                <div class="text-center text-[11px] text-slate-400 tracking-widest font-bold mb-3 uppercase">
-                                    ▲ Front (전방) ▲
-                                </div>
-
-                                <div id="admin-bus-seat-grid" class="space-y-2.5"></div>
-
-                                <div class="text-center text-[11px] text-slate-400 tracking-widest font-bold mt-4 uppercase">
-                                    ▼ Rear (후방 5인석) ▼
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Passenger Manifest -->
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                                <i class="fa-solid fa-users text-indigo-600"></i>
-                                <span>예약 명표 및 탑승객 명단</span>
-                            </h2>
-                            <button onclick="printManifest()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
-                                <i class="fa-solid fa-print"></i> 명부 인쇄/PDF
-                            </button>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs">
-                                <thead class="bg-slate-100 text-slate-600 font-bold uppercase border-b border-slate-200">
-                                    <tr>
-                                        <th class="p-2.5">예약번호</th>
-                                        <th class="p-2.5">성함</th>
-                                        <th class="p-2.5">연락처</th>
-                                        <th class="p-2.5">탑승지</th>
-                                        <th class="p-2.5">좌석번호</th>
-                                        <th class="p-2.5">상태</th>
-                                        <th class="p-2.5 text-right">관리</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="admin-manifest-tbody" class="divide-y divide-slate-100"></tbody>
-                            </table>
-                        </div>
+                <!-- 우측: 탑승객 명단 테이블 -->
+                <div class="lg:col-span-7 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-user text-indigo-600"></i> 탑승객 명단 및 입금 관리
+                    </h3>
+                    <div class="overflow-x-auto flex-grow">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-600 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-2.5">예약ID</th>
+                                    <th class="p-2.5">성함</th>
+                                    <th class="p-2.5">연락처</th>
+                                    <th class="p-2.5">탑승지</th>
+                                    <th class="p-2.5">좌석</th>
+                                    <th class="p-2.5">상태</th>
+                                    <th class="p-2.5 text-right">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-manifest-table" class="divide-y divide-slate-100 text-slate-700">
+                                <!-- JS 렌더링 -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 
-    <!-- MODAL 1: Phone Booking Modal -->
-    <div id="modal-phone-booking" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-phone-volume text-indigo-600"></i>
-                    <span>전화 예약 / 좌석 수동 지정</span>
+    <!-- [MODAL] 관리자 로그인 모달 -->
+    <div id="modal-admin-login" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-indigo-600"></i> 운영자 인증
                 </h3>
-                <button onclick="closeModal('modal-phone-booking')" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+                <button onclick="closeModal('modal-admin-login')" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-
-            <div class="space-y-4">
-                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-900 font-medium flex justify-between items-center">
-                    <span>지정 좌석:</span>
-                    <span id="modal-seat-num" class="font-extrabold text-indigo-700 text-base"></span>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">승객 성함 <span class="text-rose-500">*</span></label>
-                    <input type="text" id="modal-passenger-name" placeholder="전화 예약자 성함" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">연락처</label>
-                    <input type="tel" id="modal-passenger-phone" placeholder="010-0000-0000" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">탑승 장소</label>
-                    <select id="modal-boarding-select" class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl outline-none bg-white"></select>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">예약 상태 설정</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center justify-center p-2.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-medium">
-                            <input type="radio" name="modal-status" value="pending" class="mr-2 accent-indigo-600"> 입금 대기
-                        </label>
-                        <label class="flex items-center justify-center p-2.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-medium">
-                            <input type="radio" name="modal-status" value="confirmed" checked class="mr-2 accent-indigo-600"> 즉시 입금확정
-                        </label>
-                    </div>
-                </div>
-
-                <div class="pt-2 flex gap-2">
-                    <button onclick="closeModal('modal-phone-booking')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">취소</button>
-                    <button onclick="submitAdminPhoneBooking()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition">예약 등록</button>
-                </div>
+            <p class="text-xs text-slate-500">관리자 페이지에 접근하려면 운영자 비밀번호를 입력하세요.</p>
+            <div class="space-y-3">
+                <input type="password" id="admin-password-input" placeholder="비밀번호 입력" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button onclick="verifyAdminPassword()" class="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-sm shadow hover:bg-indigo-700 transition">로그인</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: Seat Management Action Modal -->
-    <div id="modal-seat-action" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-chair text-indigo-600"></i>
-                    <span>좌석 정보 및 상태 관리</span>
-                </h3>
-                <button onclick="closeModal('modal-seat-action')" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="space-y-4 text-xs">
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                    <div class="flex justify-between"><span class="text-slate-500">좌석 번호:</span><span id="action-seat-num" class="font-bold text-indigo-700 text-sm"></span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">예약자 성함:</span><span id="action-passenger-name" class="font-bold text-slate-800"></span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">연락처:</span><span id="action-passenger-phone" class="font-bold text-slate-800"></span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">전체 선택 좌석:</span><span id="action-all-seats" class="font-bold text-slate-800"></span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">현재 상태:</span><span id="action-seat-status" class="font-extrabold"></span></div>
-                    <div id="action-remaining-row" class="flex justify-between border-t border-slate-200/60 pt-2 hidden">
-                        <span class="text-slate-500 font-medium">확정 남은 시간:</span>
-                        <span id="action-remaining-time" class="font-mono font-black text-amber-600"></span>
-                    </div>
-                </div>
-
-                <div class="space-y-2 pt-1">
-                    <div id="action-confirm-btn-wrap">
-                        <button onclick="confirmAdminActionFromModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs">
-                            <i class="fa-solid fa-circle-check"></i>
-                            <span>전체 예약 입금확정 처리하기</span>
-                        </button>
-                    </div>
-                    <button onclick="cancelAdminSeatFromModal()" class="w-full py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200 transition flex items-center justify-center gap-2 text-xs">
-                        <i class="fa-solid fa-trash-can"></i>
-                        <span id="action-partial-cancel-label">선택한 좌석만 예약 취소 (부분 취소)</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 3: Success Modal -->
-    <div id="modal-booking-success" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4">
-            <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            
-            <div>
-                <h3 class="text-xl font-extrabold text-slate-900">예약 신청이 완료되었습니다!</h3>
-                <p class="text-xs text-slate-500 mt-1">아래 계좌로 입금해 주시면 확인 후 승인이 완료됩니다.</p>
-            </div>
-
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-left space-y-2 text-xs">
-                <div class="flex justify-between"><span class="text-slate-500">예약자:</span><span id="success-name" class="font-bold text-slate-800"></span></div>
-                <div class="flex justify-between"><span class="text-slate-500">선택 좌석:</span><span id="success-seats" class="font-bold text-indigo-600"></span></div>
-                <div class="flex justify-between"><span class="text-slate-500">입금 금액:</span><span id="success-price" class="font-extrabold text-emerald-600 text-sm"></span></div>
-                <div class="flex justify-between"><span class="text-slate-500">입금 기한:</span><span class="font-bold text-rose-600">신청 후 5시간 이내</span></div>
-                <div class="border-t border-slate-200 pt-2 mt-2">
-                    <span class="block text-slate-500 mb-1">입금 계좌번호:</span>
-                    <div class="bg-white p-2.5 rounded-lg border border-slate-300 flex items-center justify-between">
-                        <span class="font-mono font-bold text-slate-800 text-sm">새마을 9003-2307-1507-1</span>
-                        <button onclick="copyBankInfo('농협 301-1234-5678-01')" class="text-[11px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2 py-1 rounded transition">복사</button>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-1">* 예금주: 박완순</p>
-                </div>
-            </div>
-
-            <button onclick="closeModal('modal-booking-success')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">
-                확인 및 계속하기
-            </button>
-        </div>
-    </div>
-
-    <!-- MODAL 4: Custom Confirm Modal (Replacing Native confirm()) -->
-    <div id="modal-confirm-dialog" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4">
-            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-            </div>
-            <div>
-                <h3 id="confirm-modal-title" class="text-base font-bold text-slate-900">확인</h3>
-                <p id="confirm-modal-msg" class="text-xs text-slate-500 mt-1 whitespace-pre-line"></p>
-            </div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="closeModal('modal-confirm-dialog')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">취소</button>
-                <button id="confirm-modal-ok-btn" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition">확인 실행</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 5: Supabase PostgreSQL Schema Integration Blueprint -->
-    <div id="modal-supabase-info" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[85vh] flex flex-col">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-database text-emerald-600"></i>
-                    <span>Supabase (PostgreSQL) DB 연동 설계 가이드</span>
-                </h3>
-                <button onclick="closeModal('modal-supabase-info')" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto space-y-3 text-xs text-slate-600 pr-1">
-                <p class="text-slate-700 font-medium">
-                    본 시스템은 현재 <strong class="text-indigo-600">LocalStorage</strong>로 작동하며, 추후 클라우드 DB 연동 시 아래 PostgreSQL SQL 테이블 구조를 Supabase SQL Editor에 그대로 복사하여 생성할 수 있습니다.
-                </p>
-
-                <div class="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-[11px] overflow-x-auto space-y-3">
-                    <div>
-                        <span class="text-emerald-400">-- 1. 여행 상품 노선 테이블 (Tours)</span>
-                        <pre class="text-slate-300">
-CREATE TABLE tours (
-  id VARCHAR(50) PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  date DATE NOT NULL,
-  price INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);</pre>
-                    </div>
-
-                    <div>
-                        <span class="text-emerald-400">-- 2. 탑승 장소 테이블 (Boarding Points)</span>
-                        <pre class="text-slate-300">
-CREATE TABLE boarding_points (
-  id VARCHAR(50) PRIMARY KEY,
-  tour_id VARCHAR(50) REFERENCES tours(id) ON DELETE CASCADE,
-  code VARCHAR(10) NOT NULL,
-  name VARCHAR(255) NOT NULL
-);</pre>
-                    </div>
-
-                    <div>
-                        <span class="text-emerald-400">-- 3. 승객 좌석 예약 테이블 (Bookings)</span>
-                        <pre class="text-slate-300">
-CREATE TABLE bookings (
-  id VARCHAR(50) PRIMARY KEY,
-  tour_id VARCHAR(50) REFERENCES tours(id) ON DELETE CASCADE,
-  passenger_name VARCHAR(100) NOT NULL,
-  phone VARCHAR(50) NOT NULL,
-  boarding_point_id VARCHAR(50) REFERENCES boarding_points(id),
-  seats INT[] NOT NULL, -- 선택 좌석 번호 배열 [1, 2]
-  status VARCHAR(20) DEFAULT 'pending', -- 'pending' | 'confirmed'
-  locked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  expires_at TIMESTAMP WITH TIME ZONE -- 5시간 후 자동 만료
-);</pre>
-                    </div>
-                </div>
-
-                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-900 font-semibold">
-                    💡 Supabase Client SDK 연동 시, `appState` 읽기/쓰기 함수만 Supabase `from('bookings').select()` 및 `insert()`로 치환하면 즉시 멀티 디바이스 실시간 예약 시스템으로 확장 가능합니다.
-                </div>
-            </div>
-
-            <div class="pt-2">
-                <button onclick="closeModal('modal-supabase-info')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition text-xs">
-                    닫기
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notifications -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
+    <!-- 스크립트 로직 -->
     <script>
-        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V2_DATA';
+        let currentTab = 'user';
+        let isAdminLoggedIn = false;
+        let busScale = 0.85;
 
-        // Initial Demo Data
-        const DEMO_DATA = {
-            tours: [
-                {
-                    id: "tour-001",
-                    title: "설악산 단풍 & 주전골 계곡 관람",
-                    date: "2026-10-15",
-                    price: 45000,
-                    createdAt: new Date().toISOString(),
-                    boardingPoints: [
-                        { id: "bp-101", code: "🅰️", name: "시청역 3번출구 (06:30)" },
-                        { id: "bp-102", code: "🅱️", name: "잠실역 4번출구 (07:00)" },
-                        { id: "bp-103", code: "🅲", name: "죽전간이정류장 (07:30)" }
-                    ]
-                },
-                {
-                    id: "tour-002",
-                    title: "여수 밤바다 & 향일암 일출 여행",
-                    date: "2026-10-24",
-                    price: 55000,
-                    createdAt: new Date().toISOString(),
-                    boardingPoints: [
-                        { id: "bp-201", code: "🅰️", name: "사당역 1번출구 (06:00)" },
-                        { id: "bp-202", code: "🅱️", name: "양재역 12번출구 (06:20)" }
-                    ]
-                }
-            ],
-            bookings: [
-                {
-                    id: "bk-100001",
-                    tourId: "tour-001",
-                    passengerName: "김철수",
-                    phone: "010-1234-5678",
-                    boardingPointId: "bp-101",
-                    seats: [1, 2],
-                    status: "confirmed",
-                    lockedAt: new Date().toISOString(),
-                    expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString()
-                },
-                {
-                    id: "bk-100002",
-                    tourId: "tour-001",
-                    passengerName: "이영희",
-                    phone: "010-9876-5432",
-                    boardingPointId: "bp-102",
-                    seats: [3],
-                    status: "pending",
-                    lockedAt: new Date().toISOString(),
-                    expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString()
-                }
-            ]
-        };
-
-        // Application State Load
-        let appState = (function loadInitialState() {
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (parsed && Array.isArray(parsed.tours) && Array.isArray(parsed.bookings)) {
-                        return {
-                            tours: parsed.tours,
-                            bookings: parsed.bookings,
-                            selectedTourId: parsed.tours[0]?.id || null,
-                            selectedBoardingId: parsed.tours[0]?.boardingPoints[0]?.id || null,
-                            selectedSeats: []
-                        };
-                    }
-                }
-            } catch (err) {
-                console.warn("Error loading stored state:", err);
+        // 데모 데이터
+        let tours = [
+            {
+                id: 'tour-1',
+                title: '설악산 주전골 단풍 여행',
+                date: '2026-10-24',
+                price: 45000,
+                boardingPoints: ['🅰️ 온양온천역 (06:00)', '🅱️ 천안아산역 (06:30)', '🅲 두정역 (06:50)'],
+                bookings: [
+                    { id: 'bk-101', name: '김철수', phone: '01012345678', boarding: '🅰️ 온양온천역 (06:00)', seats: [1, 2], status: 'CONFIRMED' },
+                    { id: 'bk-102', name: '이영희', phone: '01098765432', boarding: '🅱️ 천안아산역 (06:30)', seats: [15], status: 'PENDING' }
+                ]
             }
-            return {
-                tours: JSON.parse(JSON.stringify(DEMO_DATA.tours)),
-                bookings: JSON.parse(JSON.stringify(DEMO_DATA.bookings)),
-                selectedTourId: DEMO_DATA.tours[0]?.id || null,
-                selectedBoardingId: DEMO_DATA.tours[0]?.boardingPoints[0]?.id || null,
-                selectedSeats: []
-            };
-        })();
+        ];
 
-        let adminBoardingCount = 0;
-        let selectedAdminSeatContext = null;
-        let pendingConfirmCallback = null;
-
-        function switchTab(tab) {
-            const userSection = document.getElementById('section-user');
-            const adminSection = document.getElementById('section-admin');
-            const btnUser = document.getElementById('nav-btn-user');
-            const btnAdmin = document.getElementById('nav-btn-admin');
-
-            if (!userSection || !adminSection) return;
-
-            if (tab === 'user') {
-                userSection.classList.remove('hidden');
-                adminSection.classList.add('hidden');
-                if (btnUser) btnUser.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
-                if (btnAdmin) btnAdmin.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white";
-            } else if (tab === 'admin') {
-                userSection.classList.add('hidden');
-                adminSection.classList.remove('hidden');
-                if (btnAdmin) btnAdmin.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
-                if (btnUser) btnUser.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white";
-                renderAdminView();
-            }
-        }
+        let selectedTourId = tours[0].id;
+        let selectedSeats = [];
+        let selectedBoarding = '';
 
         window.addEventListener('DOMContentLoaded', () => {
-            checkExpiredBookings();
-            renderApp();
-
-            // Real-time timer update every second for pending seat countdowns
-            setInterval(() => {
-                checkExpiredBookings();
-                updateLiveTimers();
-            }, 1000);
+            renderTourLists();
+            renderUserBoardingList();
+            renderBusSeats();
+            renderAdminManifest();
         });
 
-        function getRemainingTimeString(expiresAt, full = false) {
-            if (!expiresAt) return "00:00";
-            const now = Date.now();
-            const exp = new Date(expiresAt).getTime();
-            const diff = exp - now;
-
-            if (diff <= 0) return "만료";
-
-            const totalSecs = Math.floor(diff / 1000);
-            const hrs = Math.floor(totalSecs / 3600);
-            const mins = Math.floor((totalSecs % 3600) / 60);
-            const secs = totalSecs % 60;
-
-            const pad = (num) => String(num).padStart(2, '0');
-
-            if (full) {
-                return `${pad(hrs)}시간 ${pad(mins)}분 ${pad(secs)}초`;
-            }
-
-            if (hrs > 0) {
-                return `${pad(hrs)}:${pad(mins)}`;
-            }
-            return `${pad(mins)}:${pad(secs)}`;
-        }
-
-        function updateLiveTimers() {
-            // Update User view & Admin view seat timers live without rebuilding entire DOM unnecessarily
-            const userSection = document.getElementById('section-user');
-            const adminSection = document.getElementById('section-admin');
-
-            if (userSection && !userSection.classList.contains('hidden')) {
-                renderUserSeatGrid();
-            }
-            if (adminSection && !adminSection.classList.contains('hidden')) {
-                renderAdminSeatMatrix();
-                renderAdminManifestTable();
-            }
-
-            // Update modal timer if modal is currently open
-            if (selectedAdminSeatContext && selectedAdminSeatContext.statusObj && selectedAdminSeatContext.statusObj.status === 'pending') {
-                const modalRow = document.getElementById('action-remaining-row');
-                const modalTime = document.getElementById('action-remaining-time');
-                if (modalRow && !modalRow.classList.contains('hidden') && modalTime) {
-                    modalTime.innerText = getRemainingTimeString(selectedAdminSeatContext.statusObj.expiresAt, true);
-                }
-            }
-        }
-
-        function customConfirmModal(title, message, onConfirm) {
-            document.getElementById('confirm-modal-title').innerText = title;
-            document.getElementById('confirm-modal-msg').innerText = message;
-            
-            const okBtn = document.getElementById('confirm-modal-ok-btn');
-            const newOkBtn = okBtn.cloneNode(true);
-            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-
-            newOkBtn.addEventListener('click', () => {
-                closeModal('modal-confirm-dialog');
-                if (typeof onConfirm === 'function') onConfirm();
-            });
-
-            openModal('modal-confirm-dialog');
-        }
-
-        let currentScale = 1;
-
-        function setBusScale(scale) {
-            currentScale = scale;
-            const userWrap = document.getElementById('user-bus-wrapper');
-            const adminWrap = document.getElementById('admin-bus-wrapper');
-
-            if (userWrap) {
-                userWrap.style.transform = `scale(${scale})`;
-                userWrap.style.transformOrigin = 'top center';
-            }
-            if (adminWrap) {
-                adminWrap.style.transform = `scale(${scale})`;
-                adminWrap.style.transformOrigin = 'top center';
-            }
-
-            showToast(`화면 비율이 ${Math.round(scale * 100)}%로 조정되었습니다.`, "info");
-        }
-
-        function saveStateToStorage() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                tours: appState.tours,
-                bookings: appState.bookings
-            }));
-        }
-
-        function resetToDemoData() {
-            appState.tours = JSON.parse(JSON.stringify(DEMO_DATA.tours));
-            appState.bookings = JSON.parse(JSON.stringify(DEMO_DATA.bookings));
-            appState.selectedTourId = appState.tours[0]?.id || null;
-            appState.selectedBoardingId = appState.tours[0]?.boardingPoints[0]?.id || null;
-            appState.selectedSeats = [];
-            saveStateToStorage();
-            renderApp();
-            showToast("데모 데이터로 초기화되었습니다.", "info");
-        }
-
-        function exportDataJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `tour_bus_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        /* FIX 1: Tour Deletion properly working without native confirm */
-        function deleteTour(event, tourId) {
-            if (event) {
-                event.stopPropagation();
-                event.preventDefault();
-            }
-
-            const targetTour = appState.tours.find(t => String(t.id) === String(tourId));
-            if (!targetTour) return;
-
-            customConfirmModal(
-                "여행 노선 삭제",
-                `'${targetTour.title}' 여행 노선을 삭제하시겠습니까?\n해당 노선의 모든 승객 예약 정보도 함께 삭제됩니다.`,
-                () => {
-                    // Remove tour & associated bookings
-                    appState.tours = appState.tours.filter(t => String(t.id) !== String(tourId));
-                    appState.bookings = appState.bookings.filter(b => String(b.tourId) !== String(tourId));
-                    
-                    if (String(appState.selectedTourId) === String(tourId)) {
-                        appState.selectedTourId = appState.tours[0]?.id || null;
-                        appState.selectedSeats = [];
-                    }
-
-                    saveStateToStorage();
-                    showToast("여행 노선 및 관련 예약이 완전히 삭제되었습니다.", "info");
-                    renderApp();
-                }
-            );
-        }
-
-        function renderApp() {
-            renderUserTourList();
-            renderUserBoardingList();
-            renderUserSeatGrid();
-            updateSummaryBox();
-            
-            renderAdminView();
-        }
-
-        /* ---------------- PASSENGER LOGIC ---------------- */
-        function renderUserTourList() {
-            const container = document.getElementById('user-tour-list');
-            const badge = document.getElementById('tour-count-badge');
-            badge.innerText = `${appState.tours.length}개 운영중`;
-
-            if (appState.tours.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">등록된 여행 노선이 없습니다.</div>`;
+        // 탭 전환 및 보안 인증 로직
+        function switchTab(tab) {
+            if (tab === 'admin' && !isAdminLoggedIn) {
+                openModal('modal-admin-login');
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('admin-password-input').focus();
                 return;
             }
 
-            container.innerHTML = appState.tours.map(tour => {
-                const isSelected = tour.id === appState.selectedTourId;
-                const bookedCount = getBookedSeatCount(tour.id);
-                const remaining = 45 - bookedCount;
+            currentTab = tab;
+            const userSec = document.getElementById('section-user');
+            const adminSec = document.getElementById('section-admin');
+            const userBtn = document.getElementById('nav-btn-user');
+            const adminBtn = document.getElementById('nav-btn-admin');
 
-                return `
-                    <div onclick="selectUserTour('${tour.id}')" class="p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        isSelected 
-                        ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/20 shadow-sm' 
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                    }">
-                        <div class="flex justify-between items-start gap-2">
-                            <h3 class="font-bold text-slate-800 text-sm leading-snug">${escapeHtml(tour.title)}</h3>
-                            <span class="text-xs font-extrabold ${remaining > 5 ? 'text-indigo-600' : 'text-rose-600'} bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                                잔여 ${remaining}석
-                            </span>
-                        </div>
-                        <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
-                            <span class="flex items-center gap-1"><i class="fa-regular fa-calendar text-indigo-500"></i> ${tour.date}</span>
-                            <span class="font-bold text-slate-700">${tour.price.toLocaleString()}원</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function selectUserTour(tourId) {
-            appState.selectedTourId = tourId;
-            appState.selectedSeats = [];
-            const tour = appState.tours.find(t => t.id === tourId);
-            if (tour && tour.boardingPoints.length > 0) {
-                appState.selectedBoardingId = tour.boardingPoints[0].id;
+            if (tab === 'user') {
+                userSec.classList.remove('hidden');
+                adminSec.classList.add('hidden');
+                userBtn.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
+                adminBtn.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white";
             } else {
-                appState.selectedBoardingId = null;
+                userSec.classList.add('hidden');
+                adminSec.classList.remove('hidden');
+                adminBtn.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
+                userBtn.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white";
             }
-            renderApp();
         }
 
-        function renderUserBoardingList() {
-            const container = document.getElementById('user-boarding-list');
-            const currentTour = appState.tours.find(t => t.id === appState.selectedTourId);
-
-            if (!currentTour || !currentTour.boardingPoints || currentTour.boardingPoints.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">지정된 탑승장소가 없습니다.</div>`;
-                return;
+        // 비밀번호 검증 (123456789)
+        function verifyAdminPassword() {
+            const pwInput = document.getElementById('admin-password-input').value;
+            if (pwInput === "123456789") {
+                isAdminLoggedIn = true;
+                closeModal('modal-admin-login');
+                alert('관리자 인증이 완료되었습니다.');
+                switchTab('admin');
+            } else {
+                alert('비밀번호가 올바르지 않습니다.');
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('admin-password-input').focus();
             }
-
-            container.innerHTML = currentTour.boardingPoints.map(bp => {
-                const isSelected = bp.id === appState.selectedBoardingId;
-                return `
-                    <div onclick="selectUserBoarding('${bp.id}')" class="p-2.5 rounded-xl border text-xs cursor-pointer flex items-center gap-2 transition ${
-                        isSelected
-                        ? 'border-indigo-600 bg-indigo-600 text-white font-bold shadow'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }">
-                        <span class="text-base">${bp.code}</span>
-                        <span>${escapeHtml(bp.name)}</span>
-                    </div>
-                `;
-            }).join('');
         }
 
-        function selectUserBoarding(bpId) {
-            appState.selectedBoardingId = bpId;
-            renderUserBoardingList();
-            updateSummaryBox();
+        function adminLogout() {
+            isAdminLoggedIn = false;
+            switchTab('user');
+            alert('로그아웃 되었습니다.');
         }
 
-        function renderUserSeatGrid() {
-            const container = document.getElementById('bus-seat-grid');
-            const tourDisplay = document.getElementById('selected-tour-display');
-            const currentTour = appState.tours.find(t => t.id === appState.selectedTourId);
+        // 45인승 버스 좌석 생성 엔진
+        function renderBusSeats() {
+            const tour = tours.find(t => t.id === selectedTourId);
+            const userGrid = document.getElementById('bus-seat-grid');
+            const adminGrid = document.getElementById('admin-bus-seat-grid');
+            if (!userGrid || !adminGrid) return;
 
-            if (!currentTour) {
-                tourDisplay.innerText = "여행 상품을 먼저 선택해 주세요.";
-                container.innerHTML = `<div class="p-10 text-center text-slate-400 text-sm">상품을 선택하면 버스 좌석이 표시됩니다.</div>`;
-                return;
+            const seatMap = {};
+            if (tour) {
+                tour.bookings.forEach(bk => {
+                    bk.seats.forEach(sNo => {
+                        seatMap[sNo] = { status: bk.status, booking: bk, name: bk.name };
+                    });
+                });
             }
 
-            tourDisplay.innerHTML = `<strong class="text-indigo-700">${escapeHtml(currentTour.title)}</strong> (${currentTour.date}) - 좌석당 ${currentTour.price.toLocaleString()}원`;
+            let htmlUser = '';
+            let htmlAdmin = '';
 
-            const seatStatusMap = getSeatStatusMapForTour(currentTour.id);
-            let html = '';
-
-            for (let r = 0; r < 10; r++) {
-                const s1 = r * 4 + 1;
-                const s2 = r * 4 + 2;
-                const s3 = r * 4 + 3;
-                const s4 = r * 4 + 4;
-
-                html += `
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="grid grid-cols-2 gap-2 flex-1">
-                            ${renderUserSeatButton(s1, seatStatusMap[s1])}
-                            ${renderUserSeatButton(s2, seatStatusMap[s2])}
-                        </div>
-
-                        <div class="w-8 flex items-center justify-center text-[10px] text-slate-300 font-mono font-bold select-none">
-                            ${r + 1}
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 flex-1">
-                            ${renderUserSeatButton(s3, seatStatusMap[s3])}
-                            ${renderUserSeatButton(s4, seatStatusMap[s4])}
-                        </div>
-                    </div>
-                `;
+            // 1~40열 (10열 x 4자리)
+            for (let row = 0; row < 10; row++) {
+                const l1 = row * 4 + 1, l2 = row * 4 + 2, r1 = row * 4 + 3, r2 = row * 4 + 4;
+                htmlUser += `<div class="grid grid-cols-5 gap-1.5 items-center text-center">
+                    ${createSeatBtn(l1, seatMap[l1], 'user')} ${createSeatBtn(l2, seatMap[l2], 'user')}
+                    <div class="text-[9px] text-slate-400 font-mono">통로</div>
+                    ${createSeatBtn(r1, seatMap[r1], 'user')} ${createSeatBtn(r2, seatMap[r2], 'user')}
+                </div>`;
+                htmlAdmin += `<div class="grid grid-cols-5 gap-1.5 items-center text-center">
+                    ${createSeatBtn(l1, seatMap[l1], 'admin')} ${createSeatBtn(l2, seatMap[l2], 'admin')}
+                    <div class="text-[9px] text-slate-400 font-mono">통로</div>
+                    ${createSeatBtn(r1, seatMap[r1], 'admin')} ${createSeatBtn(r2, seatMap[r2], 'admin')}
+                </div>`;
             }
 
-            html += `
-                <div class="pt-2 border-t border-slate-200/80">
-                    <div class="grid grid-cols-5 gap-1.5">
-                        ${renderUserSeatButton(41, seatStatusMap[41])}
-                        ${renderUserSeatButton(42, seatStatusMap[42])}
-                        ${renderUserSeatButton(43, seatStatusMap[43])}
-                        ${renderUserSeatButton(44, seatStatusMap[44])}
-                        ${renderUserSeatButton(45, seatStatusMap[45])}
-                    </div>
-                </div>
-            `;
+            // 41~45열 (맨 뒤 5석 연석)
+            let lastUser = '<div class="grid grid-cols-5 gap-1.5 items-center text-center mt-2 pt-2 border-t border-dashed border-slate-700">';
+            let lastAdmin = '<div class="grid grid-cols-5 gap-1.5 items-center text-center mt-2 pt-2 border-t border-dashed border-slate-700">';
+            for (let s = 41; s <= 45; s++) {
+                lastUser += createSeatBtn(s, seatMap[s], 'user');
+                lastAdmin += createSeatBtn(s, seatMap[s], 'admin');
+            }
+            lastUser += '</div>'; lastAdmin += '</div>';
 
-            container.innerHTML = html;
+            userGrid.innerHTML = htmlUser + lastUser;
+            adminGrid.innerHTML = htmlAdmin + lastAdmin;
         }
 
-        function renderUserSeatButton(seatNum, statusObj) {
-            const isCurrentlySelected = appState.selectedSeats.includes(seatNum);
-            let btnClass = "";
+        function createSeatBtn(seatNo, occupiedInfo, mode) {
+            let btnClass = "py-2 rounded-lg text-xs font-bold flex flex-col items-center justify-center transition border ";
+            let isSelected = selectedSeats.includes(seatNo);
+            let label = seatNo;
             let disabled = false;
-            let timerSubtext = "";
 
-            if (isCurrentlySelected) {
-                btnClass = "bg-indigo-600 text-white font-extrabold ring-2 ring-indigo-400 shadow-md";
-            } else if (!statusObj) {
-                btnClass = "bg-slate-100 hover:bg-indigo-100 text-slate-700 font-semibold border border-slate-300";
-            } else if (statusObj.status === 'pending') {
-                btnClass = "bg-amber-400 text-amber-950 font-bold border border-amber-500 cursor-not-allowed opacity-95";
-                disabled = true;
-                const remStr = getRemainingTimeString(statusObj.expiresAt);
-                timerSubtext = `<span class="text-[9px] font-mono font-extrabold leading-none mt-0.5" title="확정 남은시간 ${remStr}">⏱️${remStr}</span>`;
-            } else if (statusObj.status === 'confirmed') {
-                btnClass = "bg-slate-400 text-white font-bold cursor-not-allowed";
-                disabled = true;
-            }
-
-            return `
-                <button 
-                    onclick="toggleSeatSelection(${seatNum})" 
-                    ${disabled ? 'disabled' : ''} 
-                    class="seat-btn h-10 rounded-lg text-xs flex flex-col items-center justify-center ${btnClass}">
-                    <span class="leading-none">${seatNum}</span>
-                    ${timerSubtext}
-                </button>
-            `;
-        }
-
-        function toggleSeatSelection(seatNum) {
-            if (!appState.selectedTourId) {
-                showToast("먼저 여행 상품을 선택해주세요.", "warning");
-                return;
-            }
-
-            const index = appState.selectedSeats.indexOf(seatNum);
-            if (index > -1) {
-                appState.selectedSeats.splice(index, 1);
+            if (occupiedInfo) {
+                if (occupiedInfo.status === 'CONFIRMED') {
+                    btnClass += "bg-slate-600 text-slate-300 border-slate-500 cursor-not-allowed";
+                    label = `${seatNo}<span class="text-[8px] font-normal">${mode === 'admin' ? occupiedInfo.name : '완료'}</span>`;
+                    if (mode === 'user') disabled = true;
+                } else if (occupiedInfo.status === 'PENDING') {
+                    btnClass += "bg-amber-400 text-slate-900 border-amber-500";
+                    label = `${seatNo}<span class="text-[8px] font-normal">${mode === 'admin' ? occupiedInfo.name : '대기'}</span>`;
+                    if (mode === 'user') disabled = true;
+                }
+            } else if (isSelected && mode === 'user') {
+                btnClass += "bg-indigo-600 text-white border-indigo-500 shadow ring-1 ring-indigo-300";
             } else {
-                appState.selectedSeats.push(seatNum);
-                appState.selectedSeats.sort((a, b) => a - b);
+                btnClass += "bg-slate-700 hover:bg-slate-600 text-slate-200 border-slate-600";
             }
 
-            renderUserSeatGrid();
-            updateSummaryBox();
+            const onClickFn = mode === 'user' ? `toggleUserSeat(${seatNo})` : '';
+            return `<button onclick="${onClickFn}" ${disabled ? 'disabled' : ''} class="${btnClass}">${label}</button>`;
         }
 
-        function updateSummaryBox() {
-            const seatsElem = document.getElementById('summary-seats');
-            const boardingElem = document.getElementById('summary-boarding');
-            const priceElem = document.getElementById('summary-total-price');
+        function toggleUserSeat(seatNo) {
+            if (selectedSeats.includes(seatNo)) {
+                selectedSeats = selectedSeats.filter(s => s !== seatNo);
+            } else {
+                selectedSeats.push(seatNo);
+                selectedSeats.sort((a,b) => a - b);
+            }
+            updateUserSummary();
+            renderBusSeats();
+        }
 
-            const currentTour = appState.tours.find(t => t.id === appState.selectedTourId);
-            const currentBp = currentTour?.boardingPoints?.find(bp => bp.id === appState.selectedBoardingId);
+        function updateUserSummary() {
+            const tour = tours.find(t => t.id === selectedTourId);
+            const price = tour ? tour.price : 0;
+            const total = price * selectedSeats.length;
 
-            seatsElem.innerText = appState.selectedSeats.length > 0 ? `${appState.selectedSeats.join(', ')}번 (${appState.selectedSeats.length}석)` : '없음';
-            boardingElem.innerText = currentBp ? `${currentBp.code} ${currentBp.name}` : '미선택';
-
-            const totalPrice = (currentTour?.price || 0) * appState.selectedSeats.length;
-            priceElem.innerText = `${totalPrice.toLocaleString()}원`;
+            document.getElementById('summary-seats').innerText = selectedSeats.length > 0 ? selectedSeats.join(', ') + '번' : '없음';
+            document.getElementById('summary-boarding').innerText = selectedBoarding || '미선택';
+            document.getElementById('summary-total-price').innerText = total.toLocaleString() + '원';
         }
 
         function submitBooking() {
-            const nameInput = document.getElementById('passenger-name');
-            const phoneInput = document.getElementById('passenger-phone');
+            const name = document.getElementById('passenger-name').value.trim();
+            const phone = document.getElementById('passenger-phone').value.trim();
 
-            const name = nameInput.value.trim();
-            const phone = phoneInput.value.trim();
+            if (!selectedTourId) return alert('여행 상품을 선택해주세요.');
+            if (!selectedBoarding) return alert('탑승 장소를 선택해주세요.');
+            if (selectedSeats.length === 0) return alert('좌석을 최소 1개 이상 선택해주세요.');
+            if (!name || !phone) return alert('예약자 성함과 연락처를 입력해주세요.');
 
-            if (!appState.selectedTourId) return showToast("여행 상품을 선택해주세요.", "warning");
-            if (!appState.selectedBoardingId) return showToast("탑승장소를 선택해주세요.", "warning");
-            if (appState.selectedSeats.length === 0) return showToast("최소 1개 이상의 좌석을 선택해주세요.", "warning");
-            if (!name) return showToast("예약자 성함을 입력해주세요.", "warning");
-            if (!phone) return showToast("연락처를 입력해주세요.", "warning");
-
-            const seatStatusMap = getSeatStatusMapForTour(appState.selectedTourId);
-            for (let s of appState.selectedSeats) {
-                if (seatStatusMap[s]) {
-                    showToast(`${s}번 좌석은 이미 예약 중입니다. 다른 좌석을 선택해주세요.`, "error");
-                    renderUserSeatGrid();
-                    return;
-                }
-            }
-
-            const currentTour = appState.tours.find(t => t.id === appState.selectedTourId);
-            const now = new Date();
-
-            const newBooking = {
-                id: "bk-" + Date.now().toString().slice(-6),
-                tourId: appState.selectedTourId,
-                passengerName: name,
-                phone: phone,
-                boardingPointId: appState.selectedBoardingId,
-                seats: [...appState.selectedSeats],
-                status: "pending",
-                lockedAt: now.toISOString(),
-                expiresAt: new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString()
-            };
-
-            appState.bookings.push(newBooking);
-            saveStateToStorage();
-
-            document.getElementById('success-name').innerText = name;
-            document.getElementById('success-seats').innerText = `${appState.selectedSeats.join(', ')}번`;
-            document.getElementById('success-price').innerText = `${(currentTour.price * appState.selectedSeats.length).toLocaleString()}원`;
-
-            openModal('modal-booking-success');
-
-            appState.selectedSeats = [];
-            nameInput.value = '';
-            phoneInput.value = '';
-            renderApp();
-        }
-
-        /* ---------------- ADMIN LOGIC & BUG FIXES ---------------- */
-        function renderAdminView() {
-            renderAdminTourSelect();
-            renderAdminTourList();
-            renderAdminSeatMatrix();
-            renderAdminManifestTable();
-
-            const boardingContainer = document.getElementById('admin-boarding-inputs');
-            if (boardingContainer.children.length === 0) {
-                boardingContainer.innerHTML = '';
-                adminBoardingCount = 0;
-                addBoardingInput("시청역 3번출구 (06:30)");
-                addBoardingInput("잠실역 4번출구 (07:00)");
-            }
-        }
-
-        function addBoardingInput(defaultVal = "") {
-            if (adminBoardingCount >= 7) {
-                showToast("탑승 장소는 최대 7개(🅰️~🅶)까지 등록 가능합니다.", "warning");
-                return;
-            }
-
-            const codes = ["🅰️", "🅱️", "🅲", "🅞", "🅴", "🅵", "🅶"];
-            const code = codes[adminBoardingCount];
-            const container = document.getElementById('admin-boarding-inputs');
-
-            const div = document.createElement('div');
-            div.className = "flex items-center gap-2";
-            div.innerHTML = `
-                <span class="text-sm font-bold w-6 text-center">${code}</span>
-                <input type="text" name="boarding-name" value="${defaultVal}" placeholder="예: 사당역 1번출구 (06:30)" required class="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500">
-                <button type="button" onclick="this.parentElement.remove(); reindexBoardingCodes();" class="text-slate-400 hover:text-rose-500 p-1">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            `;
-            container.appendChild(div);
-            adminBoardingCount++;
-        }
-
-        function reindexBoardingCodes() {
-            const codes = ["🅰️", "🅱️", "🅲", "🅞", "🅴", "🅵", "🅶"];
-            const container = document.getElementById('admin-boarding-inputs');
-            const rows = container.children;
-            adminBoardingCount = rows.length;
-            for (let i = 0; i < rows.length; i++) {
-                const codeSpan = rows[i].querySelector('span');
-                if (codeSpan) codeSpan.innerText = codes[i];
-            }
-        }
-
-        function handleCreateTour(e) {
-            e.preventDefault();
-
-            if (appState.tours.length >= 10) {
-                showToast("운영 가능한 최대 여행 노선 수(10개)를 초과했습니다.", "error");
-                return;
-            }
-
-            const title = document.getElementById('admin-tour-title').value.trim();
-            const date = document.getElementById('admin-tour-date').value;
-            const price = parseInt(document.getElementById('admin-tour-price').value) || 0;
-
-            const boardingInputs = document.querySelectorAll('input[name="boarding-name"]');
-            const codes = ["🅰️", "🅱️", "🅲", "🅞", "🅴", "🅵", "🅶"];
-            const boardingPoints = [];
-
-            boardingInputs.forEach((inp, idx) => {
-                const val = inp.value.trim();
-                if (val) {
-                    boardingPoints.push({
-                        id: "bp-" + Date.now().toString() + "-" + idx,
-                        code: codes[idx],
-                        name: val
-                    });
-                }
+            const tour = tours.find(t => t.id === selectedTourId);
+            tour.bookings.push({
+                id: 'bk-' + Date.now(),
+                name, phone,
+                boarding: selectedBoarding,
+                seats: [...selectedSeats],
+                status: 'PENDING'
             });
 
-            if (boardingPoints.length === 0) {
-                showToast("최소 1개 이상의 탑승장소를 등록해야 합니다.", "warning");
-                return;
-            }
-
-            const newTour = {
-                id: "tour-" + Date.now().toString().slice(-6),
-                title: title,
-                date: date,
-                price: price,
-                createdAt: new Date().toISOString(),
-                boardingPoints: boardingPoints
-            };
-
-            appState.tours.push(newTour);
-            appState.selectedTourId = newTour.id;
-            saveStateToStorage();
-
-            showToast("새로운 여행 노선이 성공적으로 등록되었습니다.", "success");
-            
-            document.getElementById('create-tour-form').reset();
-            document.getElementById('admin-boarding-inputs').innerHTML = '';
-            adminBoardingCount = 0;
-            addBoardingInput("시청역 3번출구 (06:30)");
-
-            renderApp();
+            alert(`예약 신청이 완료되었습니다!\n총 결제금액: ${(tour.price * selectedSeats.length).toLocaleString()}원`);
+            selectedSeats = [];
+            document.getElementById('passenger-name').value = '';
+            document.getElementById('passenger-phone').value = '';
+            updateUserSummary();
+            renderBusSeats();
+            renderAdminManifest();
         }
 
-        /* FIX 1: Tour Deletion properly working */
-        function deleteTour(event, tourId) {
-            if (event) {
-                event.stopPropagation();
-                event.preventDefault();
-            }
+        function renderTourLists() {
+            const userTourList = document.getElementById('user-tour-list');
+            const adminSelect = document.getElementById('admin-tour-select');
+            document.getElementById('tour-count-badge').innerText = `${tours.length}개 운영중`;
 
-            const targetTour = appState.tours.find(t => String(t.id) === String(tourId));
-            if (!targetTour) return;
-
-            if (!confirm(`'${targetTour.title}' 여행 노선을 삭제하시겠습니까?\n해당 노선의 모든 승객 예약 정보도 함께 삭제됩니다.`)) {
-                return;
-            }
-
-            // Remove tour & associated bookings
-            appState.tours = appState.tours.filter(t => String(t.id) !== String(tourId));
-            appState.bookings = appState.bookings.filter(b => String(b.tourId) !== String(tourId));
-            
-            if (String(appState.selectedTourId) === String(tourId)) {
-                appState.selectedTourId = appState.tours[0]?.id || null;
-                appState.selectedSeats = [];
-            }
-
-            saveStateToStorage();
-            showToast("여행 노선 및 관련 예약이 완전히 삭제되었습니다.", "info");
-            renderApp();
-        }
-
-        function renderAdminTourList() {
-            const container = document.getElementById('admin-tour-list');
-            if (appState.tours.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">등록된 노선이 없습니다.</div>`;
-                return;
-            }
-
-            container.innerHTML = appState.tours.map(tour => {
-                const bookedCount = getBookedSeatCount(tour.id);
-                return `
-                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
-                        <div class="overflow-hidden">
-                            <h4 class="font-bold text-slate-800 text-xs truncate">${escapeHtml(tour.title)}</h4>
-                            <div class="text-[11px] text-slate-500 mt-0.5 flex gap-2">
-                                <span>📅 ${tour.date}</span>
-                                <span>🪑 ${bookedCount}/45석</span>
-                            </div>
-                        </div>
-                        <button type="button" onclick="deleteTour(event, '${tour.id}')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition flex-shrink-0 border border-rose-200">
-                            삭제
-                        </button>
+            let userHtml = '', selectHtml = '';
+            tours.forEach(t => {
+                const isSel = t.id === selectedTourId;
+                userHtml += `<div onclick="selectTour('${t.id}')" class="p-3 rounded-xl border transition cursor-pointer ${isSel ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500' : 'border-slate-200 bg-white'}">
+                    <div class="flex justify-between items-start font-bold text-xs text-slate-800">
+                        <span>${t.title}</span><span class="text-indigo-600">${t.price.toLocaleString()}원</span>
                     </div>
-                `;
-            }).join('');
-        }
-
-        function renderAdminTourSelect() {
-            const select = document.getElementById('admin-tour-select');
-            if (!select) return;
-
-            select.innerHTML = appState.tours.map(tour => `
-                <option value="${tour.id}" ${String(tour.id) === String(appState.selectedTourId) ? 'selected' : ''}>
-                    [${tour.date}] ${escapeHtml(tour.title)}
-                </option>
-            `).join('');
-        }
-
-        function onAdminTourSelectChange() {
-            const select = document.getElementById('admin-tour-select');
-            if (select) {
-                appState.selectedTourId = select.value;
-                renderApp();
-            }
-        }
-
-        function renderAdminSeatMatrix() {
-            const tourId = appState.selectedTourId;
-            const container = document.getElementById('admin-bus-seat-grid');
-            const statsContainer = document.getElementById('admin-tour-stats');
-
-            const tour = appState.tours.find(t => String(t.id) === String(tourId));
-            if (!tour) {
-                container.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">선택된 노선이 없습니다.</div>`;
-                statsContainer.innerHTML = '';
-                return;
-            }
-
-            const seatStatusMap = getSeatStatusMapForTour(tour.id);
-            
-            let confirmedCount = 0;
-            let pendingCount = 0;
-
-            Object.values(seatStatusMap).forEach(s => {
-                if (s.status === 'confirmed') confirmedCount++;
-                if (s.status === 'pending') pendingCount++;
+                    <div class="text-[11px] text-slate-500 mt-1"><i class="fa-regular fa-calendar"></i> ${t.date}</div>
+                </div>`;
+                selectHtml += `<option value="${t.id}" ${isSel ? 'selected' : ''}>${t.title} (${t.date})</option>`;
             });
-            const availableCount = 45 - (confirmedCount + pendingCount);
 
-            statsContainer.innerHTML = `
-                <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-                    <span class="block text-[11px] text-emerald-700 font-semibold">선택 가능</span>
-                    <span class="text-lg font-black text-emerald-800">${availableCount}석</span>
-                </div>
-                <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                    <span class="block text-[11px] text-amber-700 font-semibold">입금 대기</span>
-                    <span class="text-lg font-black text-amber-800">${pendingCount}석</span>
-                </div>
-                <div class="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200">
-                    <span class="block text-[11px] text-indigo-700 font-semibold">입금 확정</span>
-                    <span class="text-lg font-black text-indigo-800">${confirmedCount}석</span>
-                </div>
-            `;
+            if (userTourList) userTourList.innerHTML = userHtml;
+            if (adminSelect) adminSelect.innerHTML = selectHtml;
+            document.getElementById('selected-tour-display').innerText = (tours.find(t => t.id === selectedTourId) || {}).title || '';
+        }
+
+        function selectTour(id) {
+            selectedTourId = id;
+            selectedSeats = [];
+            selectedBoarding = '';
+            renderTourLists();
+            renderUserBoardingList();
+            updateUserSummary();
+            renderBusSeats();
+            renderAdminManifest();
+        }
+
+        function renderUserBoardingList() {
+            const boardEl = document.getElementById('user-boarding-list');
+            const tour = tours.find(t => t.id === selectedTourId);
+            if (!tour) return;
 
             let html = '';
-
-            for (let r = 0; r < 10; r++) {
-                const s1 = r * 4 + 1;
-                const s2 = r * 4 + 2;
-                const s3 = r * 4 + 3;
-                const s4 = r * 4 + 4;
-
-                html += `
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="grid grid-cols-2 gap-2 flex-1">
-                            ${renderAdminSeatButton(s1, seatStatusMap[s1], tour.id)}
-                            ${renderAdminSeatButton(s2, seatStatusMap[s2], tour.id)}
-                        </div>
-
-                        <div class="w-8 flex items-center justify-center text-[10px] text-slate-300 font-mono font-bold select-none">
-                            ${r + 1}
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 flex-1">
-                            ${renderAdminSeatButton(s3, seatStatusMap[s3], tour.id)}
-                            ${renderAdminSeatButton(s4, seatStatusMap[s4], tour.id)}
-                        </div>
-                    </div>
-                `;
-            }
-
-            html += `
-                <div class="pt-2 border-t border-slate-200/80">
-                    <div class="grid grid-cols-5 gap-1.5">
-                        ${renderAdminSeatButton(41, seatStatusMap[41], tour.id)}
-                        ${renderAdminSeatButton(42, seatStatusMap[42], tour.id)}
-                        ${renderAdminSeatButton(43, seatStatusMap[43], tour.id)}
-                        ${renderAdminSeatButton(44, seatStatusMap[44], tour.id)}
-                        ${renderAdminSeatButton(45, seatStatusMap[45], tour.id)}
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = html;
-        }
-
-        function renderAdminSeatButton(seatNum, statusObj, tourId) {
-            let bgClass = "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300";
-            let labelText = "빈좌석";
-            let timerHtml = "";
-
-            if (statusObj) {
-                if (statusObj.status === 'pending') {
-                    bgClass = "bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold border-amber-500";
-                    labelText = statusObj.passengerName;
-                    const remStr = getRemainingTimeString(statusObj.expiresAt);
-                    timerHtml = `<span class="text-[8px] font-mono leading-none opacity-90 mt-0.5" title="확정 남은시간 ${remStr}">⏳${remStr}</span>`;
-                } else if (statusObj.status === 'confirmed') {
-                    bgClass = "bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-indigo-700";
-                    labelText = statusObj.passengerName;
-                }
-            }
-
-            return `
-                <button 
-                    type="button"
-                    onclick="handleAdminSeatClick(${seatNum}, '${tourId}')" 
-                    class="seat-btn h-12 rounded-lg text-xs flex flex-col items-center justify-center border shadow-sm ${bgClass}">
-                    <span class="font-black leading-none">${seatNum}</span>
-                    <span class="text-[9px] truncate max-w-[55px] opacity-90 mt-0.5 leading-tight">${escapeHtml(labelText)}</span>
-                    ${timerHtml}
-                </button>
-            `;
-        }
-
-        function handleAdminSeatClick(seatNum, tourId) {
-            const num = parseInt(seatNum, 10);
-            const seatStatusMap = getSeatStatusMapForTour(tourId);
-            const statusObj = seatStatusMap[num];
-
-            selectedAdminSeatContext = { seatNum: num, tourId, statusObj };
-
-            if (!statusObj) {
-                openPhoneBookingModal(num, tourId);
-            } else {
-                document.getElementById('action-seat-num').innerText = `${num}번 좌석`;
-                document.getElementById('action-passenger-name').innerText = statusObj.passengerName;
-                document.getElementById('action-passenger-phone').innerText = statusObj.passengerPhone || '미입력';
-                document.getElementById('action-all-seats').innerText = `${statusObj.allSeats.join(', ')}번 (${statusObj.allSeats.length}석)`;
-
-                const statusSpan = document.getElementById('action-seat-status');
-                const confirmBtnWrap = document.getElementById('action-confirm-btn-wrap');
-                const cancelLabel = document.getElementById('action-partial-cancel-label');
-                const remainingRow = document.getElementById('action-remaining-row');
-                const remainingTimeSpan = document.getElementById('action-remaining-time');
-
-                if (statusObj.allSeats.length > 1) {
-                    cancelLabel.innerText = `${num}번 좌석만 취소 (부분 취소)`;
-                } else {
-                    cancelLabel.innerText = `${num}번 좌석 취소 (예약 삭제)`;
-                }
-
-                if (statusObj.status === 'pending') {
-                    statusSpan.innerText = '입금 대기 (임시 잠금)';
-                    statusSpan.className = 'font-extrabold text-amber-600';
-                    confirmBtnWrap.classList.remove('hidden');
-                    if (remainingRow && remainingTimeSpan) {
-                        remainingRow.classList.remove('hidden');
-                        remainingTimeSpan.innerText = getRemainingTimeString(statusObj.expiresAt, true);
-                    }
-                } else {
-                    statusSpan.innerText = '입금 완료 (예약 확정)';
-                    statusSpan.className = 'font-extrabold text-indigo-600';
-                    confirmBtnWrap.classList.add('hidden');
-                    if (remainingRow) remainingRow.classList.add('hidden');
-                }
-
-                openModal('modal-seat-action');
-            }
-        }
-
-        function openPhoneBookingModal(seatNum, tourId) {
-            document.getElementById('modal-seat-num').innerText = `${seatNum}번`;
-            
-            const tour = appState.tours.find(t => String(t.id) === String(tourId));
-            const boardingSelect = document.getElementById('modal-boarding-select');
-            
-            boardingSelect.innerHTML = tour.boardingPoints.map(bp => `
-                <option value="${bp.id}">${bp.code} ${escapeHtml(bp.name)}</option>
-            `).join('');
-
-            document.getElementById('modal-passenger-name').value = '';
-            document.getElementById('modal-passenger-phone').value = '';
-
-            openModal('modal-phone-booking');
-        }
-
-        function submitAdminPhoneBooking() {
-            const name = document.getElementById('modal-passenger-name').value.trim();
-            const phone = document.getElementById('modal-passenger-phone').value.trim();
-            const boardingId = document.getElementById('modal-boarding-select').value;
-            const status = document.querySelector('input[name="modal-status"]:checked').value;
-
-            if (!name) {
-                showToast("승객 성함을 입력해주세요.", "warning");
-                return;
-            }
-
-            const { seatNum, tourId } = selectedAdminSeatContext;
-
-            const newBooking = {
-                id: "bk-adm-" + Date.now().toString().slice(-6),
-                tourId: tourId,
-                passengerName: name + " (전화)",
-                phone: phone || "전화예약",
-                boardingPointId: boardingId,
-                seats: [parseInt(seatNum, 10)],
-                status: status,
-                lockedAt: new Date().toISOString(),
-                expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString()
-            };
-
-            appState.bookings.push(newBooking);
-            saveStateToStorage();
-
-            closeModal('modal-phone-booking');
-            showToast(`${seatNum}번 좌석 수동 전화예약이 완료되었습니다.`, "success");
-            renderApp();
-        }
-
-        function confirmAdminActionFromModal() {
-            if (!selectedAdminSeatContext || !selectedAdminSeatContext.statusObj) return;
-            const bookingId = selectedAdminSeatContext.statusObj.bookingId;
-            confirmBookingStatus(bookingId);
-            closeModal('modal-seat-action');
-        }
-
-        /* FIX 2: Admin Partial Seat Cancellation implementation */
-        function cancelAdminSeatFromModal() {
-            if (!selectedAdminSeatContext || !selectedAdminSeatContext.statusObj) return;
-            const { bookingId } = selectedAdminSeatContext.statusObj;
-            const targetSeatNum = parseInt(selectedAdminSeatContext.seatNum, 10);
-
-            cancelSpecificSeat(bookingId, targetSeatNum);
-            closeModal('modal-seat-action');
-        }
-
-        function cancelSpecificSeat(bookingId, targetSeatNum) {
-            const booking = appState.bookings.find(b => String(b.id) === String(bookingId));
-            if (!booking) {
-                showToast("해당 예약 정보를 찾을 수 없습니다.", "error");
-                return;
-            }
-
-            const num = parseInt(targetSeatNum, 10);
-
-            if (booking.seats.length <= 1) {
-                // If only 1 seat was booked, remove the whole booking
-                appState.bookings = appState.bookings.filter(b => String(b.id) !== String(bookingId));
-                showToast(`${num}번 좌석 예약이 취소되었습니다.`, "info");
-            } else {
-                // Partial cancellation: filter out only this seat
-                booking.seats = booking.seats.filter(s => parseInt(s, 10) !== num);
-                showToast(`${booking.passengerName} 승객의 ${num}번 좌석만 취소되었습니다.`, "info");
-            }
-
-            saveStateToStorage();
-            renderApp();
-        }
-
-        function confirmBookingStatus(bookingId) {
-            const booking = appState.bookings.find(b => String(b.id) === String(bookingId));
-            if (booking) {
-                booking.status = 'confirmed';
-                saveStateToStorage();
-                showToast("예약이 '입금 확정' 상태로 변경되었습니다.", "success");
-                renderApp();
-            }
-        }
-
-        function cancelFullBooking(bookingId) {
-            const booking = appState.bookings.find(b => String(b.id) === String(bookingId));
-            if (!booking) return;
-
-            customConfirmModal(
-                "전체 예약 취소",
-                `'${booking.passengerName}' 승객의 전체 예약(${booking.seats.join(', ')}번 좌석)을 취소하시겠습니까?`,
-                () => {
-                    appState.bookings = appState.bookings.filter(b => String(b.id) !== String(bookingId));
-                    saveStateToStorage();
-                    showToast("전체 예약이 취소되었습니다.", "info");
-                    renderApp();
-                }
-            );
-        }
-
-        function renderAdminManifestTable() {
-            const tourId = appState.selectedTourId;
-            const tbody = document.getElementById('admin-manifest-tbody');
-
-            const tourBookings = appState.bookings.filter(b => String(b.tourId) === String(tourId));
-            const tour = appState.tours.find(t => String(t.id) === String(tourId));
-
-            if (!tour || tourBookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">등록된 승객 예약 내역이 없습니다.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = tourBookings.map(bk => {
-                const bp = tour.boardingPoints.find(p => p.id === bk.boardingPointId);
-                const isConfirmed = bk.status === 'confirmed';
-                const remStr = getRemainingTimeString(bk.expiresAt);
-
-                return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-2.5 font-mono text-slate-500 font-medium">${bk.id}</td>
-                        <td class="p-2.5 font-bold text-slate-800">${escapeHtml(bk.passengerName)}</td>
-                        <td class="p-2.5 text-slate-600">${escapeHtml(bk.phone)}</td>
-                        <td class="p-2.5">${bp ? `<span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">${bp.code} ${escapeHtml(bp.name)}</span>` : '미지정'}</td>
-                        <td class="p-2.5"><span class="font-extrabold text-indigo-700">${bk.seats.join(', ')}번</span> (${bk.seats.length}석)</td>
-                        <td class="p-2.5">
-                            ${isConfirmed 
-                                ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">입금확정</span>` 
-                                : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 font-mono" title="확정 남은 시간 ${remStr}">입금대기 ⏳${remStr}</span>`
-                            }
-                        </td>
-                        <td class="p-2.5 text-right space-x-1">
-                            ${!isConfirmed ? `
-                                <button onclick="confirmBookingStatus('${bk.id}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-[10px]">입금확정</button>
-                            ` : ''}
-                            <button onclick="cancelFullBooking('${bk.id}')" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded font-bold text-[10px]">전체취소</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function printManifest() {
-            window.print();
-        }
-
-        async function toggleFullScreen() {
-            const icon = document.getElementById('fullscreen-icon');
-            const isPseudo = document.body.classList.contains('pseudo-fullscreen');
-
-            if (!document.fullscreenElement && !document.webkitFullscreenElement && !isPseudo) {
-                try {
-                    const docEl = document.documentElement;
-                    if (docEl.requestFullscreen) {
-                        await docEl.requestFullscreen();
-                    } else if (docEl.webkitRequestFullscreen) {
-                        await docEl.webkitRequestFullscreen();
-                    }
-                    if (icon) icon.className = "fa-solid fa-compress";
-                    showToast("전체화면 모드로 전환되었습니다.", "info");
-                } catch (err) {
-                    // Fallback to CSS pseudo-fullscreen if native Fullscreen API is restricted by iframe permissions policy
-                    document.body.classList.add('pseudo-fullscreen');
-                    if (icon) icon.className = "fa-solid fa-compress";
-                    showToast("전체화면(창 맞춤) 모드로 전환되었습니다.", "info");
-                }
-            } else {
-                if (isPseudo) {
-                    document.body.classList.remove('pseudo-fullscreen');
-                }
-                try {
-                    if (document.fullscreenElement || document.webkitFullscreenElement) {
-                        if (document.exitFullscreen) {
-                            await document.exitFullscreen();
-                        } else if (document.webkitExitFullscreen) {
-                            await document.webkitExitFullscreen();
-                        }
-                    }
-                } catch (err) {
-                    console.warn("Error exiting fullscreen:", err);
-                }
-                if (icon) icon.className = "fa-solid fa-expand";
-            }
-        }
-
-        document.addEventListener('fullscreenchange', () => {
-            const icon = document.getElementById('fullscreen-icon');
-            if (!document.fullscreenElement && !document.body.classList.contains('pseudo-fullscreen')) {
-                if (icon) icon.className = "fa-solid fa-expand";
-            }
-        });
-
-        /* ---------------- UTILITY FUNCTIONS ---------------- */
-        function getSeatStatusMapForTour(tourId) {
-            const map = {};
-            const tourBookings = appState.bookings.filter(b => String(b.tourId) === String(tourId));
-
-            tourBookings.forEach(bk => {
-                bk.seats.forEach(seatNum => {
-                    const num = parseInt(seatNum, 10);
-                    map[num] = {
-                        bookingId: bk.id,
-                        passengerName: bk.passengerName,
-                        passengerPhone: bk.phone,
-                        status: bk.status,
-                        allSeats: bk.seats,
-                        expiresAt: bk.expiresAt
-                    };
-                });
+            tour.boardingPoints.forEach(bp => {
+                const isSel = selectedBoarding === bp;
+                html += `<div onclick="selectBoarding('${bp}')" class="p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition ${isSel ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-slate-50 text-slate-700 border-slate-200'}">
+                    ${bp}
+                </div>`;
             });
-
-            return map;
+            boardEl.innerHTML = html;
         }
 
-        function getBookedSeatCount(tourId) {
-            const tourBookings = appState.bookings.filter(b => String(b.tourId) === String(tourId));
-            let count = 0;
-            tourBookings.forEach(b => count += b.seats.length);
-            return count;
+        function selectBoarding(bp) {
+            selectedBoarding = bp;
+            renderUserBoardingList();
+            updateUserSummary();
         }
 
-        function checkExpiredBookings() {
-            const now = new Date().getTime();
-            let changed = false;
+        function renderAdminManifest() {
+            const manifestEl = document.getElementById('admin-manifest-table');
+            const tour = tours.find(t => t.id === selectedTourId);
+            if (!manifestEl || !tour) return;
 
-            appState.bookings = appState.bookings.filter(bk => {
-                if (bk.status === 'pending' && bk.expiresAt) {
-                    const exp = new Date(bk.expiresAt).getTime();
-                    if (now > exp) {
-                        changed = true;
-                        return false;
-                    }
-                }
-                return true;
+            let html = '';
+            tour.bookings.forEach(bk => {
+                const isConfirmed = bk.status === 'CONFIRMED';
+                html += `<tr>
+                    <td class="p-2 font-mono text-[11px]">${bk.id}</td>
+                    <td class="p-2 font-bold">${bk.name}</td>
+                    <td class="p-2">${bk.phone}</td>
+                    <td class="p-2">${bk.boarding}</td>
+                    <td class="p-2 font-bold text-indigo-600">${bk.seats.join(', ')}번</td>
+                    <td class="p-2">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isConfirmed ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-800'}">
+                            ${isConfirmed ? '입금완료' : '입금대기'}
+                        </span>
+                    </td>
+                    <td class="p-2 text-right space-x-1">
+                        <button onclick="toggleBookingStatus('${bk.id}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-bold">
+                            ${isConfirmed ? '대기전환' : '입금확정'}
+                        </button>
+                        <button onclick="cancelBooking('${bk.id}')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-[10px] font-bold">취소</button>
+                    </td>
+                </tr>`;
             });
+            manifestEl.innerHTML = html || `<tr><td colspan="7" class="p-6 text-center text-slate-400">등록된 예약 내역이 없습니다.</td></tr>`;
+        }
 
-            if (changed) {
-                saveStateToStorage();
-                renderApp();
-                showToast("입금 기한(5시간)이 만료된 임시 좌석이 자동 해제되었습니다.", "info");
+        function toggleBookingStatus(bkId) {
+            const tour = tours.find(t => t.id === selectedTourId);
+            const bk = tour.bookings.find(b => b.id === bkId);
+            if (bk) {
+                bk.status = bk.status === 'CONFIRMED' ? 'PENDING' : 'CONFIRMED';
+                renderBusSeats();
+                renderAdminManifest();
             }
         }
 
-        function openModal(id) {
-            document.getElementById(id).classList.remove('hidden');
+        function cancelBooking(bkId) {
+            if (!confirm('해당 예약을 취소하시겠습니까?')) return;
+            const tour = tours.find(t => t.id === selectedTourId);
+            tour.bookings = tour.bookings.filter(b => b.id !== bkId);
+            renderBusSeats();
+            renderAdminManifest();
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
-
-        function copyBankInfo(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showToast("계좌번호가 클립보드에 복사되었습니다.", "success");
-        }
-
-        function showToast(message, type = "info") {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            let bg = "bg-slate-800 text-white";
-            let icon = "fa-circle-info";
-
-            if (type === "success") {
-                bg = "bg-emerald-600 text-white";
-                icon = "fa-circle-check";
-            } else if (type === "warning") {
-                bg = "bg-amber-500 text-slate-950";
-                icon = "fa-triangle-exclamation";
-            } else if (type === "error") {
-                bg = "bg-rose-600 text-white";
-                icon = "fa-circle-xmark";
+        // 엑셀 다운로드 기능 (SheetJS 활용)
+        function exportToExcel() {
+            const tour = tours.find(t => t.id === selectedTourId);
+            if (!tour || tour.bookings.length === 0) {
+                return alert('다운로드할 예약 명단 데이터가 없습니다.');
             }
 
-            toast.className = `${bg} px-4 py-3 rounded-xl shadow-xl text-xs font-bold flex items-center gap-2 transition-all transform translate-y-2 opacity-0 pointer-events-auto max-w-sm`;
-            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i> <span>${escapeHtml(message)}</span>`;
+            const excelData = tour.bookings.map(bk => ({
+                "예약번호": bk.id,
+                "예약자명": bk.name,
+                "연락처": bk.phone,
+                "탑승장소": bk.boarding,
+                "배정좌석": bk.seats.join(', ') + '번',
+                "입금상태": bk.status === 'CONFIRMED' ? '입금완료' : '입금대기'
+            }));
 
-            container.appendChild(toast);
-
-            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "탑승객명단");
+            
+            // 파일 다운로드 실행
+            XLSX.writeFile(workbook, `Bus_Manifest_${tour.date}.xlsx`);
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     </script>
 </body>
 </html>
