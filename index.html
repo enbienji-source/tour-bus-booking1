@@ -214,8 +214,8 @@
                             <div class="flex items-center gap-3 text-xs bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>선택가능</span>
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>선택중</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기(남은시간)</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-400 rounded"></span>예약완료</span>
+                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (성함+남은시간)</span>
+                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-400 rounded"></span>예약완료 (성함)</span>
                             </div>
                         </div>
 
@@ -355,8 +355,8 @@
 
                         <div class="flex items-center justify-center gap-4 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4">
                             <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>빈좌석 (클릭시 전화예약)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (남은시간 표시)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정 (성함 표시)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (성함+남은시간)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정 (성함)</span>
                         </div>
 
                         <div class="overflow-x-auto overflow-y-hidden pb-2">
@@ -627,7 +627,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
-        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V5_DATA';
+        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V6_DATA';
         const PASSWORD_KEY = 'TOUR_BUS_ADMIN_PASSWORD';
 
         const DEMO_DATA = {
@@ -952,14 +952,14 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
                 disabled = true;
                 if (statusObj.status === 'pending') {
                     cls = "bg-amber-400 text-amber-950 font-bold border border-amber-500 opacity-95";
-                    label = getRemainingTimeString(statusObj.expiresAt);
-                    subLabel = `<span class="text-[7px] leading-none opacity-80">입금대기</span>`;
+                    label = statusObj.passengerName;
+                    subLabel = `<span class="text-[7px] leading-none opacity-90 font-mono">${getRemainingTimeString(statusObj.expiresAt)}</span>`;
                 } else {
                     cls = "bg-slate-400 text-white font-bold";
-                    label = `${statusObj.passengerName}`;
+                    label = statusObj.passengerName;
                 }
             }
-            return `<button onclick="toggleSeat(${seatNum})" ${disabled ? 'disabled' : ''} class="seat-btn h-10 rounded-lg text-xs flex flex-col items-center justify-center ${cls}"><span class="leading-none font-bold text-[11px]">${seatNum}</span><span class="text-[9px] truncate max-w-[45px] mt-0.5 font-mono">${label}</span>${subLabel}</button>`;
+            return `<button onclick="toggleSeat(${seatNum})" ${disabled ? 'disabled' : ''} class="seat-btn h-10 rounded-lg text-xs flex flex-col items-center justify-center ${cls}"><span class="leading-none font-bold text-[11px]">${seatNum}</span><span class="text-[9px] truncate max-w-[45px] mt-0.5">${label}</span>${subLabel}</button>`;
         }
 
         function toggleSeat(seatNum) {
@@ -1120,14 +1120,14 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             if (statusObj) {
                 if (statusObj.status === 'pending') {
                     cls = "bg-amber-400 text-amber-950 font-bold border-amber-500";
-                    label = getRemainingTimeString(statusObj.expiresAt);
-                    subLabel = `<span class="text-[7px] leading-none opacity-80">입금대기</span>`;
+                    label = statusObj.passengerName;
+                    subLabel = `<span class="text-[7px] leading-none opacity-90 font-mono">${getRemainingTimeString(statusObj.expiresAt)}</span>`;
                 } else {
                     cls = "bg-indigo-600 text-white font-bold border-indigo-700";
                     label = statusObj.passengerName;
                 }
             }
-            return `<button onclick="handleAdminSeat(${seatNum}, '${tourId}')" class="seat-btn h-12 rounded-lg text-xs flex flex-col items-center justify-center border shadow-sm ${cls}"><span class="font-black leading-none text-[11px]">${seatNum}</span><span class="text-[9px] truncate max-w-[55px] mt-0.5 font-mono">${label}</span>${subLabel}</button>`;
+            return `<button onclick="handleAdminSeat(${seatNum}, '${tourId}')" class="seat-btn h-12 rounded-lg text-xs flex flex-col items-center justify-center border shadow-sm ${cls}"><span class="font-black leading-none text-[11px]">${seatNum}</span><span class="text-[9px] truncate max-w-[55px] mt-0.5">${label}</span>${subLabel}</button>`;
         }
 
         function handleAdminSeat(seatNum, tourId) {
