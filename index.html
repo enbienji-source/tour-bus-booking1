@@ -11,6 +11,10 @@
     <!-- Google Fonts Noto Sans KR -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     
+    <!-- Firebase App & Firestore CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -614,7 +618,22 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
-        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V9_DATA';
+        // ==========================================
+        // 🔧 [필수] 본인의 Firebase 설정값으로 변경하세요
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Firebase 초기화
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         const PASSWORD_KEY = 'TOUR_BUS_ADMIN_PASSWORD';
 
         const DEMO_DATA = {
@@ -656,30 +675,13 @@
             ]
         };
 
-        let appState = (function loadInitialState() {
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (parsed && Array.isArray(parsed.tours) && Array.isArray(parsed.bookings)) {
-                        return {
-                            tours: parsed.tours,
-                            bookings: parsed.bookings,
-                            selectedTourId: parsed.tours[0]?.id || null,
-                            selectedBoardingId: parsed.tours[0]?.boardingPoints[0]?.id || null,
-                            selectedSeats: []
-                        };
-                    }
-                }
-            } catch (err) {}
-            return {
-                tours: JSON.parse(JSON.stringify(DEMO_DATA.tours)),
-                bookings: JSON.parse(JSON.stringify(DEMO_DATA.bookings)),
-                selectedTourId: DEMO_DATA.tours[0]?.id || null,
-                selectedBoardingId: DEMO_DATA.tours[0]?.boardingPoints[0]?.id || null,
-                selectedSeats: []
-            };
-        })();
+        let appState = {
+            tours: [],
+            bookings: [],
+            selectedTourId: null,
+            selectedBoardingId: null,
+            selectedSeats: []
+        };
 
         let adminBoardingCount = 0;
         let selectedAdminSeatContext = null;
@@ -744,13 +746,58 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            checkExpiredBookings();
-            renderApp();
+            initFirestoreRealtimeSync();
             setInterval(() => {
                 checkExpiredBookings();
                 updateLiveTimers();
             }, 1000);
         });
+
+        // ==========================================
+        // 🔄 Firestore 실시간 연동 및 동기화 처리
+        // ==========================================
+        function initFirestoreRealtimeSync() {
+            const docRef = db.collection("busSystem").doc("mainData");
+
+            // 최초 데이터가 없을 경우 DEMO_DATA로 초기화 세팅
+            docRef.get().then((doc) => {
+                if (!doc.exists) {
+                    docRef.set(DEMO_DATA);
+                }
+            }).catch((err) => {
+                console.error("Firestore 초기화 오류:", err);
+            });
+
+            // 실시간 리스너 (Firestore 데이터 변경 시 자동으로 앱 상태 갱신 및 UI 재렌더링)
+            docRef.onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    appState.tours = data.tours || [];
+                    appState.bookings = data.bookings || [];
+
+                    if (!appState.selectedTourId || !appState.tours.some(t => t.id === appState.selectedTourId)) {
+                        appState.selectedTourId = appState.tours[0]?.id || null;
+                    }
+                    const currentTour = appState.tours.find(t => t.id === appState.selectedTourId);
+                    if (!appState.selectedBoardingId || !currentTour?.boardingPoints.some(bp => bp.id === appState.selectedBoardingId)) {
+                        appState.selectedBoardingId = currentTour?.boardingPoints[0]?.id || null;
+                    }
+
+                    renderApp();
+                }
+            });
+        }
+
+        function saveStateToFirestore() {
+            const docRef = db.collection("busSystem").doc("mainData");
+            docRef.set({
+                tours: appState.tours,
+                bookings: appState.bookings
+            }).catch((err) => {
+                console.error("데이터 저장 실패:", err);
+                showToast("데이터 동기화 중 오류가 발생했습니다.", "error");
+            });
+        }
 
         function getRemainingTimeString(expiresAt) {
             if (!expiresAt) return "00:00";
@@ -796,10 +843,6 @@
             showToast(`화면 비율이 ${Math.round(scale * 100)}%로 조정되었습니다.`, "info");
         }
 
-        function saveStateToStorage() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ tours: appState.tours, bookings: appState.bookings }));
-        }
-
         function deleteTour(e, tourId) {
             e.stopPropagation();
             customConfirmModal("여행 노선 삭제", "해당 노선과 모든 예약 정보가 삭제됩니다.", () => {
@@ -809,8 +852,7 @@
                     appState.selectedTourId = appState.tours[0]?.id || null;
                     appState.selectedSeats = [];
                 }
-                saveStateToStorage();
-                renderApp();
+                saveStateToFirestore();
                 showToast("노선이 삭제되었습니다.", "info");
             });
         }
@@ -972,7 +1014,7 @@
                 status: "pending",
                 expiresAt: new Date(now.getTime() + 5 * 3600 * 1000).toISOString()
             });
-            saveStateToStorage();
+            saveStateToFirestore();
 
             document.getElementById('success-name').innerText = name;
             document.getElementById('success-seats').innerText = `${appState.selectedSeats.join(', ')}번`;
@@ -1027,7 +1069,7 @@
                 id: "tour-" + Date.now().toString().slice(-6),
                 title, date, price, boardingPoints
             });
-            saveStateToStorage();
+            saveStateToFirestore();
             showToast("노선이 등록되었습니다.", "success");
             document.getElementById('create-tour-form').reset();
             renderApp();
@@ -1148,10 +1190,9 @@
                 status: status,
                 expiresAt: new Date(Date.now() + 5 * 3600 * 1000).toISOString()
             });
-            saveStateToStorage();
+            saveStateToFirestore();
             closeModal('modal-phone-booking');
             showToast("예약이 등록되었습니다.", "success");
-            renderApp();
         }
 
         function confirmAdminActionFromModal() {
@@ -1159,9 +1200,8 @@
             const bk = appState.bookings.find(b => b.id === selectedAdminSeatContext.statusObj.bookingId);
             if (bk) {
                 bk.status = 'confirmed';
-                saveStateToStorage();
+                saveStateToFirestore();
                 showToast("입금 확정되었습니다.", "success");
-                renderApp();
             }
             closeModal('modal-seat-action');
         }
@@ -1175,28 +1215,25 @@
             } else {
                 bk.seats = bk.seats.filter(s => s !== selectedAdminSeatContext.seatNum);
             }
-            saveStateToStorage();
+            saveStateToFirestore();
             showToast("좌석이 취소되었습니다.", "info");
             closeModal('modal-seat-action');
-            renderApp();
         }
 
         function confirmBookingStatus(bookingId) {
             const bk = appState.bookings.find(b => b.id === bookingId);
             if (bk) {
                 bk.status = 'confirmed';
-                saveStateToStorage();
+                saveStateToFirestore();
                 showToast("입금 확정되었습니다.", "success");
-                renderApp();
             }
         }
 
         function cancelFullBooking(bookingId) {
             customConfirmModal("예약 취소", "전체 예약을 취소하시겠습니까?", () => {
                 appState.bookings = appState.bookings.filter(b => b.id !== bookingId);
-                saveStateToStorage();
+                saveStateToFirestore();
                 showToast("예약이 취소되었습니다.", "info");
-                renderApp();
             });
         }
 
@@ -1322,8 +1359,7 @@
             const originalLen = appState.bookings.length;
             appState.bookings = appState.bookings.filter(b => b.status !== 'pending' || !b.expiresAt || new Date(b.expiresAt).getTime() > now);
             if (appState.bookings.length !== originalLen) {
-                saveStateToStorage();
-                renderApp();
+                saveStateToFirestore();
             }
         }
 
