@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관광버스 45인승 예약 및 관리 시스템</title>
+    <title>버스예약 - 45인승 관광버스 예약 시스템</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -85,48 +85,47 @@
 <body class="text-slate-800 min-h-screen flex flex-col antialiased">
 
     <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
-        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('user')">
-                    <div class="bg-indigo-600 p-2.5 rounded-xl shadow-inner">
-                        <i class="fa-solid font-black fa-bus-simple text-xl text-amber-400"></i>
+        <div class="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2">
+                <div class="flex items-center space-x-2 cursor-pointer shrink-0" onclick="switchTab('user')">
+                    <div class="bg-indigo-600 p-2 rounded-xl shadow-inner">
+                        <i class="fa-solid font-black fa-bus-simple text-lg text-amber-400"></i>
                     </div>
                     <div>
-                        <span class="text-xl font-bold tracking-tight">이순신여행사 버스예약</span>
-                        <span class="hidden sm:inline-block text-xs bg-indigo-800 text-indigo-200 px-2 py-0.5 rounded-full ml-2">45인승 전용</span>
+                        <span class="text-lg sm:text-xl font-bold tracking-tight">버스예약</span>
                     </div>
                 </div>
 
-                <div class="flex items-center space-x-2">
-                    <div class="flex items-center space-x-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50">
-                        <button id="nav-btn-user" onclick="switchTab('user')" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow">
+                <div class="flex items-center space-x-1.5 sm:space-x-3 overflow-x-auto py-1">
+                    <div class="flex items-center space-x-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50 shrink-0">
+                        <button id="nav-btn-user" onclick="switchTab('user')" class="flex items-center space-x-1 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow">
                             <i class="fa-solid fa-user"></i>
-                            <span>승객 예약</span>
+                            <span>승객예약</span>
                         </button>
-                        <button id="nav-btn-admin" onclick="trySwitchToAdmin()" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white">
+                        <button id="nav-btn-admin" onclick="trySwitchToAdmin()" class="flex items-center space-x-1 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-indigo-200 hover:text-white">
                             <i class="fa-solid fa-user-gear"></i>
-                            <span>운영자 관리</span>
+                            <span>운영자관리</span>
                         </button>
                     </div>
 
-                    <div class="flex items-center gap-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50 text-xs">
-                        <button onclick="setBusScale(1)" title="원래 크기" class="px-2.5 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">100%</button>
-                        <button onclick="setBusScale(0.85)" title="축소 보기" class="px-2.5 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">85%</button>
-                        <button onclick="setBusScale(0.7)" title="한눈에 전체보기" class="px-2.5 py-1 bg-amber-500 text-slate-950 font-extrabold rounded-lg shadow">전체보기 (70%)</button>
+                    <div class="hidden md:flex items-center gap-1 bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50 text-xs shrink-0">
+                        <button onclick="setBusScale(1)" title="원래 크기" class="px-2 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">100%</button>
+                        <button onclick="setBusScale(0.85)" title="축소 보기" class="px-2 py-1 text-indigo-200 hover:text-white font-bold rounded-lg hover:bg-indigo-800">85%</button>
+                        <button onclick="setBusScale(0.7)" title="한눈에 전체보기" class="px-2 py-1 bg-amber-500 text-slate-950 font-extrabold rounded-lg shadow">전체(70%)</button>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <main class="flex-grow max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-6">
 
         <!-- USER MODE SECTION -->
         <div id="section-user" class="space-y-6">
             <div class="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold mb-1">편안하고 안전한 관광버스 좌석 예약</h1>
-                    <p class="text-indigo-100 text-sm">원하시는 여행 상품을 선택하고 손쉽게 원하는 좌석을 지정해보세요.</p>
+                    <h1 class="text-xl sm:text-2xl font-bold mb-1">편안하고 안전한 관광버스 좌석 예약</h1>
+                    <p class="text-indigo-100 text-xs sm:text-sm">원하시는 여행 상품을 선택하고 손쉽게 원하는 좌석을 지정해보세요.</p>
                 </div>
                 <div class="flex items-center gap-3 text-xs bg-white/15 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20">
                     <span class="flex items-center gap-1.5"><i class="fa-solid fa-clock text-amber-300"></i> 입금대기: 5시간 잠금</span>
@@ -152,7 +151,7 @@
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                         <h2 class="font-bold text-slate-900 text-base flex items-center gap-2 mb-4">
                             <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">2</span>
-                            탑승 장소 선택 (🅰️~🅶)
+                            탑승 장소 선택 (🅰️~🅳)
                         </h2>
                         <div id="user-boarding-list" class="space-y-2">
                             <div class="p-6 text-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
@@ -211,11 +210,11 @@
                                 <p id="selected-tour-display" class="text-xs text-slate-500 mt-0.5">여행 상품을 먼저 선택해 주세요.</p>
                             </div>
 
-                            <div class="flex items-center gap-3 text-xs bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                            <div class="flex flex-wrap items-center gap-2 text-xs bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>선택가능</span>
                                 <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>선택중</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (성함+남은시간)</span>
-                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-400 rounded"></span>예약완료 (성함)</span>
+                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기(성함/시간)</span>
+                                <span class="flex items-center gap-1"><span class="w-3.5 h-3.5 bg-slate-400 rounded"></span>예약완료</span>
                             </div>
                         </div>
 
@@ -256,8 +255,8 @@
                         <i class="fa-solid fa-sliders text-2xl text-white"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold">운영자 관리 대시보드</h1>
-                        <p class="text-slate-400 text-sm">신규 노선 등록, 버스 좌석 실시간 현황 및 수동 전화 예약을 관리합니다.</p>
+                        <h1 class="text-xl sm:text-2xl font-bold">운영자 관리 대시보드</h1>
+                        <p class="text-slate-400 text-xs sm:text-sm">신규 노선 등록, 버스 좌석 실시간 현황 및 수동 전화 예약을 관리합니다.</p>
                     </div>
                 </div>
 
@@ -265,18 +264,6 @@
                     <button onclick="openModal('modal-change-password')" class="px-3.5 py-2 bg-indigo-800 hover:bg-indigo-700 text-indigo-100 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
                         <i class="fa-solid fa-key"></i>
                         <span>비밀번호 변경</span>
-                    </button>
-                    <button onclick="resetToDemoData()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>데모 데이터 초기화</span>
-                    </button>
-                    <button onclick="openModal('modal-supabase-info')" class="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-emerald-100 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-database"></i>
-                        <span>Supabase DB 설계</span>
-                    </button>
-                    <button onclick="exportDataJSON()" class="px-3.5 py-2 bg-indigo-800 hover:bg-indigo-700 text-indigo-100 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-download"></i>
-                        <span>백업 JSON</span>
                     </button>
                 </div>
             </div>
@@ -294,7 +281,7 @@
                         <form id="create-tour-form" onsubmit="handleCreateTour(event)" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 mb-1">여행 목적지 / 상품명 <span class="text-rose-500">*</span></label>
-                                <input type="text" id="admin-tour-title" placeholder="예: 설악산 단풍 여행" required class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <input type="text" id="admin-tour-title" placeholder="예: 아산 문화 탐방 투어" required class="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
@@ -353,10 +340,10 @@
 
                         <div id="admin-tour-stats" class="grid grid-cols-3 gap-3 mb-5 text-center"></div>
 
-                        <div class="flex items-center justify-center gap-4 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4">
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>빈좌석 (클릭시 전화예약)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기 (성함+남은시간)</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정 (성함)</span>
+                        <div class="flex flex-wrap items-center justify-center gap-3 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4">
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-slate-100 border border-slate-300 rounded"></span>빈좌석</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span>입금대기(성함/시간)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-indigo-600 rounded"></span>입금확정(성함)</span>
                         </div>
 
                         <div class="overflow-x-auto overflow-y-hidden pb-2">
@@ -572,11 +559,10 @@
                 <div class="flex justify-between"><span class="text-slate-500">입금 금액:</span><span id="success-price" class="font-extrabold text-emerald-600 text-sm"></span></div>
                 <div class="flex justify-between"><span class="text-slate-500">입금 기한:</span><span class="font-bold text-rose-600">신청 후 5시간 이내</span></div>
                 <div class="border-t border-slate-200 pt-2 mt-2">
-		    <span class="block text-slate-500 mb-1">예금주 : 박완순</span>
                     <span class="block text-slate-500 mb-1">입금 계좌번호:</span>
                     <div class="bg-white p-2.5 rounded-lg border border-slate-300 flex items-center justify-between">
-                        <span class="font-mono font-bold text-slate-800 text-sm">새마을 9003-2307-1507-1</span>
-                        <button onclick="copyBankInfo('새마을 9003-2307-1507-1')" class="text-[11px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2 py-1 rounded transition">복사</button>
+                        <span class="font-mono font-bold text-slate-800 text-sm">농협 301-1234-5678-01</span>
+                        <button onclick="copyBankInfo('농협 301-1234-5678-01')" class="text-[11px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-2 py-1 rounded transition">복사</button>
                     </div>
                 </div>
             </div>
@@ -600,48 +586,24 @@
         </div>
     </div>
 
-    <div id="modal-supabase-info" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[85vh] flex flex-col">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-database text-emerald-600"></i>
-                    <span>Supabase (PostgreSQL) DB 연동 설계 가이드</span>
-                </h3>
-                <button onclick="closeModal('modal-supabase-info')" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <div class="flex-1 overflow-y-auto space-y-3 text-xs text-slate-600 pr-1">
-                <p class="text-slate-700 font-medium">현재 LocalStorage 기반으로 작동하며, 추후 Supabase 연동 시 아래 SQL을 활용할 수 있습니다.</p>
-                <div class="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-[11px] overflow-x-auto space-y-3">
-                    <pre class="text-slate-300">
-CREATE TABLE tours (id VARCHAR(50) PRIMARY KEY, title VARCHAR(255) NOT NULL, date DATE NOT NULL, price INT NOT NULL DEFAULT 0);
-CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenger_name VARCHAR(100), phone VARCHAR(50), seats INT[], status VARCHAR(20));</pre>
-                </div>
-            </div>
-            <div class="pt-2">
-                <button onclick="closeModal('modal-supabase-info')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition text-xs">닫기</button>
-            </div>
-        </div>
-    </div>
-
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
-        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V6_DATA';
+        const STORAGE_KEY = 'TOUR_BUS_SYSTEM_V9_DATA';
         const PASSWORD_KEY = 'TOUR_BUS_ADMIN_PASSWORD';
 
         const DEMO_DATA = {
             tours: [
                 {
                     id: "tour-001",
-                    title: "설악산 단풍 & 주전골 계곡 관람",
+                    title: "아산 출발 문화 탐방 버스 투어",
                     date: "2026-10-15",
                     price: 45000,
                     boardingPoints: [
-                        { id: "bp-101", code: "🅰️", name: "시청역 3번출구 (06:30)" },
-                        { id: "bp-102", code: "🅱️", name: "잠실역 4번출구 (07:00)" },
-                        { id: "bp-103", code: "🅲", name: "죽전간이정류장 (07:30)" }
+                        { id: "bp-101", code: "🅰️", name: "아산우체국<아산시청 맞은편> (07:50)" },
+                        { id: "bp-102", code: "🅱️", name: "온양온천역 광장 (08:00)" },
+                        { id: "bp-103", code: "🅲", name: "아산마트 버스정류장 (08:05)" },
+                        { id: "bp-104", code: "🅳", name: "배방읍사무소 버스정류장 (08:15)" }
                     ]
                 }
             ],
@@ -707,13 +669,13 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             if (tab === 'user') {
                 userSection.classList.remove('hidden');
                 adminSection.classList.add('hidden');
-                btnUser.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
-                btnAdmin.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white";
+                btnUser.className = "flex items-center space-x-1 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
+                btnAdmin.className = "flex items-center space-x-1 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-indigo-200 hover:text-white";
             } else if (tab === 'admin') {
                 userSection.classList.add('hidden');
                 adminSection.classList.remove('hidden');
-                btnAdmin.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
-                btnUser.className = "flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all text-indigo-200 hover:text-white";
+                btnAdmin.className = "flex items-center space-x-1 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow";
+                btnUser.className = "flex items-center space-x-1 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-indigo-200 hover:text-white";
                 renderAdminView();
             }
         }
@@ -811,27 +773,6 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
 
         function saveStateToStorage() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ tours: appState.tours, bookings: appState.bookings }));
-        }
-
-        function resetToDemoData() {
-            appState.tours = JSON.parse(JSON.stringify(DEMO_DATA.tours));
-            appState.bookings = JSON.parse(JSON.stringify(DEMO_DATA.bookings));
-            appState.selectedTourId = appState.tours[0]?.id || null;
-            appState.selectedBoardingId = appState.tours[0]?.boardingPoints[0]?.id || null;
-            appState.selectedSeats = [];
-            saveStateToStorage();
-            renderApp();
-            showToast("데모 데이터로 초기화되었습니다.", "info");
-        }
-
-        function exportDataJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
-            const a = document.createElement('a');
-            a.setAttribute("href", dataStr);
-            a.setAttribute("download", `tour_bus_backup.json`);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
         }
 
         function deleteTour(e, tourId) {
@@ -1027,14 +968,16 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             renderAdminManifestTable();
             if (!document.getElementById('admin-boarding-inputs').children.length) {
                 adminBoardingCount = 0;
-                addBoardingInput("시청역 3번출구 (06:30)");
-                addBoardingInput("잠실역 4번출구 (07:00)");
+                addBoardingInput("아산우체국<아산시청 맞은편> (07:50)");
+                addBoardingInput("온양온천역 광장 (08:00)");
+                addBoardingInput("아산마트 버스정류장 (08:05)");
+                addBoardingInput("배방읍사무소 버스정류장 (08:15)");
             }
         }
 
         function addBoardingInput(defaultVal = "") {
             if (adminBoardingCount >= 7) return showToast("탑승지는 최대 7개까지 가능합니다.", "warning");
-            const codes = ["🅰️", "🅱️", "🅲", "🅞", "🅴", "🅵", "🅶"];
+            const codes = ["🅰️", "🅱️", "🅲", "🅳", "🅴", "🅵", "🅶"];
             const div = document.createElement('div');
             div.className = "flex items-center gap-2";
             div.innerHTML = `<span class="text-sm font-bold w-6 text-center">${codes[adminBoardingCount]}</span><input type="text" name="boarding-name" value="${defaultVal}" required class="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none"><button type="button" onclick="this.parentElement.remove();" class="text-slate-400 hover:text-rose-500 p-1"><i class="fa-solid fa-trash-can"></i></button>`;
@@ -1049,7 +992,7 @@ CREATE TABLE bookings (id VARCHAR(50) PRIMARY KEY, tour_id VARCHAR(50), passenge
             const price = parseInt(document.getElementById('admin-tour-price').value) || 0;
             const boardingPoints = Array.from(document.querySelectorAll('input[name="boarding-name"]')).map((inp, idx) => ({
                 id: "bp-" + Date.now() + "-" + idx,
-                code: ["🅰️", "🅱️", "🅲", "🅞", "🅴", "🅵", "🅶"][idx],
+                code: ["🅰️", "🅱️", "🅲", "🅳", "🅴", "🅵", "🅶"][idx],
                 name: inp.value.trim()
             })).filter(b => b.name);
 
