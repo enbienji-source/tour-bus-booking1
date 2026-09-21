@@ -92,7 +92,7 @@
                         <i class="fa-solid font-black fa-bus-simple text-lg text-amber-400"></i>
                     </div>
                     <div>
-                        <span class="text-lg sm:text-xl font-bold tracking-tight">이순신투어 버스예약</span>
+                        <span class="text-lg sm:text-xl font-bold tracking-tight">버스예약</span>
                     </div>
                 </div>
 
@@ -128,7 +128,7 @@
                     <p class="text-indigo-100 text-xs sm:text-sm">원하시는 여행 상품을 선택하고 손쉽게 원하는 좌석을 지정해보세요.</p>
                 </div>
                 <div class="flex items-center gap-3 text-xs bg-white/15 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20">
-                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-clock text-amber-300"></i> 입금대기: 5시간 이내 입금확인이 안되면 자동취소됩니다.</span>
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-clock text-amber-300"></i> 입금대기: 5시간 잠금</span>
                     <span class="text-indigo-300">|</span>
                     <span class="flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-emerald-300"></i> 계좌이체</span>
                 </div>
@@ -378,7 +378,10 @@
                                 <i class="fa-solid fa-users text-indigo-600"></i>
                                 <span>예약 명표 및 탑승객 명단</span>
                             </h2>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="openBoardingSummaryModal()" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
+                                    <i class="fa-solid fa-map-location-dot"></i> 탑승장별 현황
+                                </button>
                                 <button onclick="exportManifestExcel()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
                                     <i class="fa-solid fa-file-excel"></i> 엑셀 다운로드
                                 </button>
@@ -426,6 +429,27 @@
             <div class="flex gap-2 pt-1">
                 <button onclick="closeModal('modal-admin-login')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">취소</button>
                 <button onclick="verifyAdminPassword()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition">로그인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 탑승장별 현황 모달 추가 -->
+    <div id="modal-boarding-summary" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 shrink-0">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-map-location-dot text-indigo-600"></i>
+                    <span>탑승장별 탑승자 명단 및 인원수 현황</span>
+                </h3>
+                <button onclick="closeModal('modal-boarding-summary')" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="boarding-summary-content" class="space-y-4 overflow-y-auto pr-1 flex-grow text-xs">
+                <!-- 동적 렌더링 -->
+            </div>
+            <div class="pt-2 shrink-0">
+                <button onclick="closeModal('modal-boarding-summary')" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">닫기</button>
             </div>
         </div>
     </div>
@@ -1200,6 +1224,59 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        /* 탑승장별 현황 모달 열기 함수 추가 */
+        function openBoardingSummaryModal() {
+            const tour = appState.tours.find(t => t.id === appState.selectedTourId);
+            const bookings = appState.bookings.filter(b => b.tourId === appState.selectedTourId);
+            const container = document.getElementById('boarding-summary-content');
+
+            if (!tour) {
+                showToast("선택된 노선이 없습니다.", "warning");
+                return;
+            }
+
+            let html = '';
+            tour.boardingPoints.forEach(bp => {
+                const matchedBookings = bookings.filter(b => b.boardingPointId === bp.id);
+                let totalPeople = 0;
+                matchedBookings.forEach(b => totalPeople += b.seats.length);
+
+                html += `
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                            <span class="font-bold text-slate-800 text-sm">${bp.code} ${escapeHtml(bp.name)}</span>
+                            <span class="bg-indigo-600 text-white px-2.5 py-0.5 rounded-full font-extrabold text-xs">총 ${totalPeople}명</span>
+                        </div>
+                `;
+
+                if (matchedBookings.length === 0) {
+                    html += `<div class="text-slate-400 text-center py-2 text-xs">탑승 예정인 인원이 없습니다.</div>`;
+                } else {
+                    html += `<div class="space-y-1.5 pt-1">`;
+                    matchedBookings.forEach(b => {
+                        const statusBadge = b.status === 'confirmed' ? '<span class="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-bold">확정</span>' : '<span class="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-bold">대기</span>';
+                        html += `
+                            <div class="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-800">${escapeHtml(b.passengerName)}</span>
+                                    <span class="text-slate-500 font-mono text-[11px]">(${escapeHtml(b.phone)})</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-indigo-600">${b.seats.join(', ')}번</span>
+                                    ${statusBadge}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+            openModal('modal-boarding-summary');
         }
 
         function exportManifestExcel() {
